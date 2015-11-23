@@ -1,7 +1,5 @@
 # Tunul - Minecraft server
 
-=========
-
 One of the github projects that will never be finished. Most likely.
 The off chance you would want to help, submit a private Issue with your email
 
