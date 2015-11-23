@@ -8,7 +8,7 @@ The off chance you would want to help, submit a private Issue with your email
 #####  (These have to be designed from start, so useless to put in bug tracker) 
 
 ---------
-##### Written Rust
+##### Written in Rust
 
 ##### Won't be Backwards compatible - wont Use NDT format
 
