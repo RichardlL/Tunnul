@@ -5,7 +5,7 @@ The off chance you would want to help, submit a private Issue with your email
 
 ##Goals/Features
 
-###  (These have to be designed from start, so useless to put in bug tracker) 
+#####  (These have to be designed from start, so useless to put in bug tracker) 
 
 ---------
 ##### Written Rust
