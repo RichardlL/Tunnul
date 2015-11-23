@@ -3,7 +3,7 @@
 One of the github projects that will never be finished. Most likely.
 The off chance you would want to help, submit a private Issue with your email
 
-###Goals/Features
+##Goals/Features
 
 ###  (These have to be designed from start, so useless to put in bug tracker) 
 
