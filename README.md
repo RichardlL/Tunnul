@@ -16,10 +16,11 @@ The off chance you would want to help, submit a private Issue with your email
 
 ##### Lazy - will call threads instead of looping based on needs. 
 
-
   *Only constant active process would be Keep-alive ping, and time based things e.g. growth. All others will be triggered
   by player movement, action, or location
+ 
   #####Better map generation and saves
+ 
   * Ore viens will be have a radom but equivlent chance of being generated as compared to vanilla(by default),
   but instead being generated when the chunck is generated, they will be generated when a player is within a few blocks of
   them.  This allows for more effiecient packet transfer, less data to store, and will provide costless xray 
