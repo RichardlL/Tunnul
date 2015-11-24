@@ -2,7 +2,7 @@
 ## TO CLIENT
 
 * Packet Formation - see ./
-* Very Basic Chink formation
+* Very Basic Chunk formation
 * HandShake
 * Keep Alive
 * chunk data
