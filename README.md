@@ -15,10 +15,9 @@ The off chance you would want to help, submit a private Issue with your email
 ##### Multithreaded by design
 
 ##### Lazy - will call threads instead of looping based on needs. 
-  *Only constant active process would be Keep-alive ping, and time based things e.g. growth. All others will be triggered
-  by player movement, action, or location
+*The Only constant active process would be Keep-alive ping, and time based variables e.g. hunger,growth. All others will be triggered by player movement,client action, or proximity
  
-##### Better map generation and saves
+##### Better map generation and saves - also lazy
  
   * Ore viens will be have a radom but equivlent chance of being generated as compared to vanilla(by default),
   but instead being generated when the chunck is generated, they will be generated when a player is within a few blocks of
@@ -34,4 +33,5 @@ The off chance you would want to help, submit a private Issue with your email
   a viens requirements,   This is calculated for a block when a a block within X meters is mined by a player
   * Terrain generation will be configurable, E.g. extreme, or mild
   * Since "abnormalities" are independent of chunks, non reasource intensive things such as plant growth will still occur
-  when no chunk are'nt loaded.
+  when no chunk are'nt loaded In a sepperate thread
+  * Anti X-ray will be built in, but as a side effect of lazy loading, and  computed ahead of time to INCREASE performance.  When not under load, TUNUL will calculate what is viewable from where. If Object A is not viewable from area B, and a player is in area B, Object A will not be edited into to the graphed map before being sent to the player, increasing performance under load. When the player is within a buffer of a few seconds of being able to see object A, the map will update
