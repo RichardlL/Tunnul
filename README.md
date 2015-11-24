@@ -15,8 +15,7 @@ The off chance you would want to help, submit a private Issue with your email
 ##### Multithreaded by design
 
 ##### Lazy - will call threads instead of looping based on needs. 
-  *Only constant active process would be Keep-alive ping, and time based things e.g. hunger,growth. All others will be  
-  triggered by player movement,client action, or proximity
+*The Only constant active process would be Keep-alive ping, and time based variables e.g. hunger,growth. All others will be triggered by player movement,client action, or proximity
  
 ##### Better map generation and saves - also lazy
  
