@@ -34,4 +34,5 @@ The off chance you would want to help, submit a private Issue with your email
   a viens requirements,   This is calculated for a block when a a block within X meters is mined by a player
   * Terrain generation will be configurable, E.g. extreme, or mild
   * Since "abnormalities" are independent of chunks, non reasource intensive things such as plant growth will still occur
-  when no chunk are'nt loaded.
+  when no chunk are'nt loaded In a sepperate thread
+  * Anti X-ray will be built in, but as a side effect of lazy loading, and  computed ahead of time to INCREASE performance.  When not under load, TUNUL will calculate what is viewable from where. If Object A is not viewable from area B, and a player is in area B, Object A will not be edited in to the graphed map, saving performance. When the player is within a buffer of a few seconds of being able to see object A, the map will update
