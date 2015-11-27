@@ -3,5 +3,5 @@ name = "Tunul"
 version = "0.1.0"
 authors = ["Richard Lettich <lettrich42@gmail.com>"]
 
-[dependencies]
-num = "0.1.28"
+
+include = ["src/**/*", "Cargo.toml"]

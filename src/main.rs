@@ -8,12 +8,14 @@
  * THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
  * TUNUL IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
  */
-
-extern crate num;
+extern crate core;
+use `std::io::{Read,Write
 use std::net::{TcpListener, TcpStream};
 use std::thread;
+use core::iter::Iterator;
 use std::time::Duration;
-use std::io::Read;
+mod conversion;
+
 
 fn main() {
         println!("Starting Tunul Server...");
@@ -33,8 +35,8 @@ struct LoginPacket {
 }
 impl LoginPacket {
         fn new(stream: &mut TcpStream) -> LoginPacket {
-                let (length, _) = read_varint(stream.by_ref());
-                let (packetid , so_packetid) = read_varint(stream.by_ref());
+                let (length, _) = conversion::itt::read(stream.by_ref());
+                let (packetid , so_packetid) = conversion::itt::read(stream.by_ref());
                 let mut buff: Vec<u8> = Vec::with_capacity(length as usize - so_packetid);
                 let _ = stream.read(&mut buff);
                 LoginPacket {id: packetid as usize, data: buff}
@@ -53,7 +55,7 @@ fn packet_reader(stream: TcpStream) {
         println!("packet id: {}", p.id);
         let _ = p.data; /* FIXME: */
 }
-
+/*
 fn read_varint(src_array:&mut TcpStream) -> (i64, usize) {
         let mut result:i64 = 0;
         let mut vi_size:usize = 0;
@@ -89,3 +91,4 @@ fn to_varint(src: i64) -> Box<[u8]> {
 }
 
 
+*/
