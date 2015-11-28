@@ -19,8 +19,8 @@ pub struct Player {
                                  // if a player is currently digging a block. To keep track of
                                  // how fast they are digging, and prevent mining multipe blocks
                                  // the bool is if its utilizing a window rather than mining (chest, craftbench)
-       
-        chunks: (i32,i32),       // chunck the player is in;we Have to keep track, as players dont unload chunks automatically
+
+        chunks: (i32,i32),       // chunck the player is in; we Have to keep track, as players dont unload chunks automatically
         //inventory: Inventory	 //
         health: f32,             //
         food: f32,               // 0..20
@@ -32,14 +32,15 @@ pub struct Player {
         //abilities                // speed, supermine, etc
         reputation: u8,          // Keep track of violations, tolerance for move to fast, etc
 }
-
+a
 use packet::{Packet};
 use std::net::TcpStream;
-pub fn player_connect(first_packet: Packet, stream: TcpStream) {
+pub fn player_connect(mut first_packet: Packet, stream: TcpStream) {
         // Protocol version check. This implements 47
         if let 47 = first_packet.get_varint() {
                 return;
         }
+        
 }
 
 

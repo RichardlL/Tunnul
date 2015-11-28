@@ -1,25 +1,30 @@
+
 // Packet id is defined by minecraft so you know how to handle the
 // packet e.g. block updates, movement, etc.
 // Data is just the rest of the packet, and will vary based on id
-struct Packet {
+pub struct Packet {
         id: usize,
         data: PacketData,
 }
 
 // rather than just a vector, well also store a index, so we dont have
 // to keep track of what we have already read
-struct PacketData {
+pub struct PacketData {
         array: Vec<u8>,
         index: usize,
 }
 
+use std::time::Duration;
+use std::net::TcpStream;
+use conversion;
+use std::io::Read;
 impl Packet {
         //Takes a tcp stream and pulls a packet from it
-        fn new(stream: &mut TcpStream) -> Packet {
+        pub fn new(stream: &mut TcpStream) -> Packet {
                 let mut stream = stream;
 
-                let (length, _) = itt::read(stream);
-                let (packetid , sizeof_packetid) = itt::read(stream);
+                let (length, _) = conversion::itt::read(stream);
+                let (packetid , sizeof_packetid) = conversion::itt::read(stream);
                 //FIX : prevent over allocation
                 let mut buff: Vec<u8> = Vec::with_capacity((length as usize) - sizeof_packetid);
                 let _ = stream.read(&mut buff);
@@ -28,9 +33,9 @@ impl Packet {
                          data: PacketData{ array: buff, index: 0 } }
         }
         // Gets varint from current index position and updates index
-        fn get_varint(&self) -> i32 {
+        pub fn get_varint(&mut self) -> i32 {
                 let (result, bytes) = conversion::varint::from(&self.data.array[self.data.index..]);
-                self.array.index += bytes;
+                self.data.index += bytes;
                 result
         }
 }
@@ -41,7 +46,7 @@ impl Packet {
 // Were spawning a new thread rather than using this one
 // to release the stream (streams are copies),
 // and to release the first packet
-fn new_connection(stream: TcpStream) {
+pub fn new_connection(stream: TcpStream) {
         let mut stream = stream;
         let _ = stream.set_read_timeout(Some(Duration::new(20, 0)));
 

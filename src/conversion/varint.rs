@@ -9,7 +9,7 @@
  * TUNUL IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
  */
 
-fn from(src_array:&[u8]) -> (i32, usize) {
+pub fn from(src_array:&[u8]) -> (i32, usize) {
         let mut result:i32 = 0;
         let mut vi_size:usize = 0;
         loop {
