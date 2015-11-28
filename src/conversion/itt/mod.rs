@@ -1,18 +1,44 @@
+/* Tunul - Minecraft server
+ * Copyright 2015 Richard Lettich
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
+ * TUNUL IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
+ */
+
 use std::net::TcpStream;
 use std::io::Read;
 
-fn read(src_array:&mut TcpStream) -> (i64, usize) {
+pub fn read(src_array:&mut TcpStream) -> (i32, usize) {
+        let mut result:i32 = 0;
+        let mut vi_size:usize = 0;
+        let mut temp: u8;
+        loop {
+                temp = src_array.bytes().next().unwrap().unwrap();
+                result |= ((temp  & 0x7Fu8)  as i32)  << (25 - (7 * vi_size));
+                vi_size += 1;
+                if temp & (0x80u8) == 0 {
+                        break;
+                }
+        }
+        result =  result >> (32 - (7 * vi_size));
+        (result,vi_size)
+}
+pub fn read_long(src_array:&mut TcpStream) -> (i64, usize) {
         let mut result:i64 = 0;
         let mut vi_size:usize = 0;
         let mut temp: u8;
         loop {
                 temp = src_array.bytes().next().unwrap().unwrap();
-                result |= ((temp & 0xFF ) as i64)  << (57 - (7 * vi_size)) ;
-                if temp & 0x100u8 == 0 {
-                        break
-                }
+                result |= ((temp  & 0x7Fu8)  as i64)  << (57 - (7 * vi_size)) ;
                 vi_size += 1;
+                if temp & (0x80u8) == 0 {
+                        break;
+                }
         }
-        vi_size += 1;
-        (result >> (32 - (7 * (vi_size) )), vi_size)
+        result =  result >> (64 - (7 * vi_size)) ;
+       (result,vi_size)
 }
