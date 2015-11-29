@@ -11,21 +11,21 @@
 
 use std::net::TcpStream;
 use std::io::Read;
-
+use std::i32;
 pub fn read(src_array:&mut TcpStream) -> (i32, usize) {
         let mut result:i32 = 0;
         let mut vi_size:usize = 0;
         let mut temp: u8;
-        loop {
-                temp = src_array.bytes().next().unwrap().unwrap();
-                result |= ((temp  & 0x7Fu8)  as i32)  << (25 - (7 * vi_size));
+        for byte in  src_array.bytes() {
+                let byte = byte.unwrap();
+                result |= ((byte  & 0x7Fu8)  as i32)  << (7 * vi_size);
                 vi_size += 1;
-                if temp & (0x80u8) == 0 {
+                if (byte & 0x80u8) == 0 {
                         break;
                 }
+                result |= ((result & 0x40) << 25) >> (31-(7 * vi_size));
         }
-        result =  result >> (32 - (7 * vi_size));
-        (result,vi_size)
+        (result, vi_size)
 }
 pub fn read_long(src_array:&mut TcpStream) -> (i64, usize) {
         let mut result:i64 = 0;
@@ -42,3 +42,6 @@ pub fn read_long(src_array:&mut TcpStream) -> (i64, usize) {
         result =  result >> (64 - (7 * vi_size)) ;
        (result,vi_size)
 }
+
+
+

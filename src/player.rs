@@ -32,15 +32,29 @@ pub struct Player {
         //abilities                // speed, supermine, etc
         reputation: u8,          // Keep track of violations, tolerance for move to fast, etc
 }
-a
+use std::thread;
 use packet::{Packet};
 use std::net::TcpStream;
-pub fn player_connect(mut first_packet: Packet, stream: TcpStream) {
-        // Protocol version check. This implements 47
-        if let 47 = first_packet.get_varint() {
-                return;
+pub fn player_connect(mut first_packet: Packet, mut stream: TcpStream) {
+        // Protocol version check
+        let p_v = first_packet.get_varint();
+        if p_v != 47 {
+                panic!("ERROR: player Disconnected, incorrect version");
         }
-        
+        // Minecraft sends the server adress and port;
+        // this is used for authentication, but we dont have that right now
+        first_packet.index += first_packet.get_varint() as usize + 2;
+        // This is if they want server status or to login
+        if first_packet.get_varint() == 1 {
+                // status update 
+        } else {
+                let mut login_packet = Packet::new(&mut stream);
+                let player_name = login_packet.get_string();
+                println!("{} has joined",player_name);
+        }
+        loop {
+                thread::sleep_ms(2000);
+        }
 }
 
 

@@ -8,18 +8,22 @@
  * THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
  * TUNUL IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
  */
-
+use std::i32;
 pub fn from(src_array:&[u8]) -> (i32, usize) {
         let mut result:i32 = 0;
         let mut vi_size:usize = 0;
         loop {
-                result |= ((src_array[vi_size] & 0x7Fu8 ) as i32)  << (25 - (7 * vi_size)) ;
-                vi_size += 1;
+                result |= ((src_array[vi_size] & 0x7Fu8 ) as i32)  << (7 * vi_size) ;
                 if src_array[vi_size] & 0x80u8 == 0 {
                         break;
                 }
+                println!("source: {}", src_array[vi_size]);
+                vi_size += 1;
+
         }
-        (result >> (32-(7*vi_size)), vi_size)
+        vi_size +=1;
+        result |= ((result & 0x40) << 25) >> (31-(7 * vi_size));
+        (result, vi_size)
 }
 
 fn from_long(src_array:&[u8]) -> (i64, usize) {
