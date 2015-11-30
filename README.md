@@ -1,4 +1,5 @@
-# Tunul - Minecraft server
+# Tunul
+ -An Opensource Minecraft server
 
 **Progress so far**
  - encode and decode twos-complement varints
@@ -14,6 +15,3 @@
 	
 
 
-THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT
-
-TUNUL IS NOT APPROVEDBY OR ASSOCIATED WITH MOJANG.
