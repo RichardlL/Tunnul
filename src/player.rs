@@ -32,33 +32,44 @@ pub struct Player {
         //abilities                // speed, supermine, etc
         reputation: u8,          // Keep track of violations, tolerance for move to fast, etc
 }
-use std::thread;
+use std::{thread,time};
+use packet;
 use packet::{Packet};
 use std::net::TcpStream;
+use conversion;
+
 pub fn player_connect(mut first_packet: Packet, mut stream: TcpStream) {
-        // Protocol version check
-        let p_v = first_packet.get_varint();
-        if p_v != 47 {
-                panic!("ERROR: player Disconnected, incorrect version");
-        }
-        // Minecraft sends the server adress and port;
-        // this is used for authentication, but we dont have that right now
+        //SETTING: Version number (of minecraft packet protocol)
+        //version comes first, but we dont need that if they just want to ping us,
+        // so well save it for later
+        let vers = 47u8;
+        let client_vers = first_packet.get_varint() as u8;
+
+        //Minecraft gives the server its ip adress(prefixed with varint), not needed for now
         first_packet.index += first_packet.get_varint() as usize + 2;
-        // This is if they want server status or to login
-        if first_packet.get_varint() == 1 {
-                // status update 
+
+        //check If they just want to ping (1 is ping , two is login)
+        if 1 == first_packet.get_varint() {
+                //protocol is just to send empty packet, so we dont need to read it :0
+                let _ =Packet::new(&mut stream);
+                packet::send_status(stream);
+        } else if vers != client_vers {
+                packet::wrong_version(stream, client_vers, vers);
         } else {
                 let mut login_packet = Packet::new(&mut stream);
                 let player_name = login_packet.get_string();
-                println!("{} has joined",player_name);
-        }
-        loop {
-                thread::sleep_ms(2000);
+                /*
+                *FEATURE/FIXME : Autheticate login, or be able to set a password in game
+                */
+                //sends Login Success
+                confirm_login(&mut stream, player_name);
         }
 }
-
-
-
+use std::borrow;
+fn confirm_login(mut stream: &TcpStream,  name: borrow::Cow<str>) {
+        println!("{} has joined the game", name);
+        packet::form_packet(stream, &[&name.as_bytes()],0x02);
+}
 
 
 

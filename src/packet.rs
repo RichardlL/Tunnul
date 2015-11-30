@@ -1,3 +1,4 @@
+// Note: All packets sent after login will be in player.rs
 
 // Packet id is defined by minecraft so you know how to handle the
 // packet e.g. block updates, movement, etc.
@@ -18,18 +19,17 @@ use std::io::Read;
 use std::borrow;
 impl Packet {
         //Takes a tcp stream and pulls a packet from it
+        //MAJOR FIX : no guarantee of full packet
+        //MAJOR FIX: prevent over allocation
         pub fn new(stream: &mut TcpStream) -> Packet {
                 let mut stream = stream;
                 let _ = stream.set_read_timeout(Some(Duration::new(20, 0)));
 
                 let (length, _) = conversion::itt::read(stream);
                 let (packetid , sizeof_packetid) = conversion::itt::read(stream);
-                //FIX : prevent over allocation
-                let length_to_read = ((length as usize) - sizeof_packetid);
+                let length_to_read = (length as usize) - sizeof_packetid;
                 let mut buff:Vec<u8> = vec![0;length_to_read];
-                let mut have_read = 0;
-                //FIX : no guarantee of full packet
-                stream.read(&mut buff[have_read..]).unwrap();
+                stream.read(&mut buff);
                 Packet { id: packetid as usize, data: buff,  index: 0 }
         }
         // Gets varint from current index position and updates index
@@ -66,5 +66,48 @@ pub fn new_connection(stream: TcpStream) {
                 Packet{..} => panic!("Malformed login packet"),
         };
 }
+pub fn send_status(stream: TcpStream) {
+        unimplemented!();
+}
+use std::io::Write;
+use std::time;
+pub fn wrong_version(mut stream :TcpStream, client: u8, server: u8) {
+        let client = client.to_string();
+        let server = server.to_string();
+        
+        stream.set_write_timeout(Some(time::Duration::new(10, 0)));
+        let message = ["{\"text\": \"Incompatable client (Are you using a beta or old version?)".as_bytes(),
+          (",\n Your Protocol Version is ").as_bytes(),
+          client.as_bytes(),
+          ("\n Server verrsion: ").as_bytes(),
+          server.as_bytes(),
+          ("\"}").as_bytes(),
+        ];
+        let mut message_length:usize = 0;
+        for i in &message {
+                message_length += i.len();
+                println!("i: {}",i.len());
+        }
+        let message_length_var = conversion::varint::to((message_length) as i32);
+        let packet_length = conversion::varint::to((message_length_var.len() as i32)+ (message_length as i32) + 1);
+        stream.write(&packet_length);
+        stream.write(&[0x00]);
+        stream.write(&message_length_var);
+        for i in &message {
+                stream.write(i);
+        }
+}
 
-
+pub fn form_packet(mut stream: &TcpStream, data: &[&[u8]], packetid: u8) {
+        let mut data_length:usize = 0;
+        for c in data {
+                data_length += c.len();
+        }
+        let packet_length = conversion::varint::to((1 + data_length)as i32);
+        println!("packetlenth {}", data_length+1);
+        stream.write(&*packet_length);
+        stream.write(&[packetid]);
+        for w in data {
+                stream.write(*w);
+        }
+}

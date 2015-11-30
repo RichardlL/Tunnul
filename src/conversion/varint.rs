@@ -39,18 +39,26 @@ fn from_long(src_array:&[u8]) -> (i64, usize) {
         (result >> (64-(7*vi_size)), vi_size)
 }
 
-fn to(src: i64) -> Box<[u8]> {
-        let plus_num = |x, y| -> Box<[u8]> {
-                let bytes:usize = ((64 - (src.leading_zeros() as usize)) * 9  + 7) / 8;
+pub fn to(src: i32) -> Vec<u8> {
+        let plus_num = |x, y| -> Vec<u8> {
+                let bytes:usize = ((32 - (src.leading_zeros() as usize)) * 9  + 63) / 64;
                 let mut result: Vec<u8> = vec![0; bytes];;
-                for i in 0..bytes+1 {
-                        result[(bytes-1)-i] = (y ^ ((x << i)as u8 & 0x7F));
+                for i in 0..bytes {
+                        println!("num {} i {}", x,i);
+                        result[i] = y ^ (((x >> (7*i))as u8) & 0x7F);
                 }
-                result[10] &= 0x7F;
-                result.into_boxed_slice()
+                result[bytes - 1] ^= 0x80; //flips last digit show end of varint
+                result
         };
-        match src  & 0x1 << 63i64 {
-                0x100000000  => plus_num((src ^( 0x100000000i64 >> 63)),0xFFu8),
+        // This flips the digits around on negative numbers
+        // negative are encoded asreally tall positives such as
+        // so that adding them would be equivlent
+        // y = 1111111 (-1) + 1  
+        // y would over flow to zero, but for a 64 bit, 1 would use all 64 bits, so this flips it,
+        // and uses the minimum number of bytes (i.e. first 0x1 found instead of 0)
+        // and then flips it back
+        match (src  & (0x1 << 31i32)) as u32 {
+                0x80000000u32  => plus_num((src ^( (0x1i32 << 31) >> 31)),0xFFu8),
                 _  => plus_num(src,0x80u8),
         }
 }
