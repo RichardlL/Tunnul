@@ -40,9 +40,10 @@ fn from_long(src_array:&[u8]) -> (i64, usize) {
 }
 
 pub fn to(src: i32) -> Vec<u8> {
-        let plus_num = |x, y| -> Vec<u8> {
-                let bytes:usize = ((32 - (src.leading_zeros() as usize)) * 9  + 63) / 64;
-                let mut result: Vec<u8> = vec![0; bytes];;
+        let plus_num = |x:i32 , y| -> Vec<u8> {
+                let bytes:usize = ((((((32 - x.leading_zeros()) as usize)* 9 + 7) / 8) + 7) / 8);
+                println!("bytes {}",bytes);
+                let mut result: Vec<u8> = vec![0; bytes];
                 for i in 0..bytes {
                         println!("num {} i {}", x,i);
                         result[i] = y ^ (((x >> (7*i))as u8) & 0x7F);

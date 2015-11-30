@@ -67,8 +67,10 @@ pub fn player_connect(mut first_packet: Packet, mut stream: TcpStream) {
 }
 use std::borrow;
 fn confirm_login(mut stream: &TcpStream,  name: borrow::Cow<str>) {
-        println!("{} has joined the game", name);
-        packet::form_packet(stream, &[&name.as_bytes()],0x02);
+        println!("{} has joined the game len {}", name, name.len());
+        let length = conversion::varint::to(((*name).len() as i32 - 1));
+        println!("leeeee {}", length[0]);
+        packet::form_packet(stream, &[&length[..], name.as_bytes()],0x02);
 }
 
 

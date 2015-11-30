@@ -101,13 +101,13 @@ pub fn wrong_version(mut stream :TcpStream, client: u8, server: u8) {
 pub fn form_packet(mut stream: &TcpStream, data: &[&[u8]], packetid: u8) {
         let mut data_length:usize = 0;
         for c in data {
-                data_length += c.len();
+                data_length += (*c).len();
         }
-        let packet_length = conversion::varint::to((1 + data_length)as i32);
-        println!("packetlenth {}", data_length+1);
-        stream.write(&*packet_length);
+        let packet_length = conversion::varint::to((data_length)as i32 + 1);
+        stream.write(&packet_length[..]);
         stream.write(&[packetid]);
+        println!(" sadsa ds {}",data[0][0]);
         for w in data {
-                stream.write(*w);
+                stream.write(w);
         }
 }
