@@ -11,3 +11,12 @@
 
 pub mod itt;
 pub mod varint;
+
+use std::cell::RefCell;
+//turns string to bytes, and prefixes with length as varint
+pub fn to_string(src_string : String) -> Box<[Vec<u8>;2]> {
+        let src_string = src_string.into_bytes();
+        let str_length = varint::to((src_string.len() as i32));
+        let src_string = src_string;
+        Box::new([str_length,src_string])
+}

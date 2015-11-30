@@ -70,9 +70,8 @@ fn confirm_login(mut stream: &TcpStream,  name: borrow::Cow<str>) {
         println!("{} has joined the game len {}", name, name.len());
         let length = conversion::varint::to(((*name).len() as i32 - 1));
         println!("leeeee {}", length[0]);
-        packet::form_packet(stream, &[&length[..], name.as_bytes()],0x02);
+        packet::form_packet(stream, &[&[13], name.as_bytes()],0x02);
 }
-
 
 
 

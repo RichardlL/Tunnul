@@ -104,10 +104,9 @@ pub fn form_packet(mut stream: &TcpStream, data: &[&[u8]], packetid: u8) {
                 data_length += (*c).len();
         }
         let packet_length = conversion::varint::to((data_length)as i32 + 1);
-        stream.write(&packet_length[..]);
-        stream.write(&[packetid]);
-        println!(" sadsa ds {}",data[0][0]);
+        let _ = stream.write(&packet_length[..]);
+        let _ = stream.write(&[packetid]);
         for w in data {
-                stream.write(w);
+                let _ = stream.write(w);
         }
 }
