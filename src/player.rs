@@ -58,20 +58,20 @@ pub fn player_connect(mut first_packet: Packet, mut stream: TcpStream) {
         } else {
                 let mut login_packet = Packet::new(&mut stream);
                 let player_name = login_packet.get_string();
-                /*
-                *FEATURE/FIXME : Autheticate login, or be able to set a password in game
-                */
+                // FEATURE/FIXME : Autheticate login, or be able to set a password in game
                 //sends Login Success
                 confirm_login(&mut stream, player_name);
         }
 }
 use std::borrow;
-fn confirm_login(mut stream: &TcpStream,  name: borrow::Cow<str>) {
+use std::slice::Split;
+fn confirm_login(mut stream: &TcpStream,  name: String) {
         println!("{} has joined the game len {}", name, name.len());
-        let length = conversion::varint::to(((*name).len() as i32 - 1));
-        println!("leeeee {}", length[0]);
-        packet::form_packet(stream, &[&[13], name.as_bytes()],0x02);
+        //uuid is for official login
+        let uuid:Vec<u8> = vec![0;16];
+        let mut name: &[Vec<u8>] = &conversion::to_string(name);
+        packet::form_packet(stream, 0x02, &[&uuid, &name[0], &name[1]]);
+        loop{}
 }
-
 
 

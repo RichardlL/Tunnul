@@ -39,9 +39,9 @@ impl Packet {
                 result
         }
         //gets string from current index and updates position
-        pub fn get_string(&mut self) -> borrow::Cow<str> {
+        pub fn get_string(&mut self) -> String {
                 let size = (self.get_varint()+1) as usize;
-                String::from_utf8_lossy(&self.data[self.index..size])
+                borrow::Cow::into_owned(String::from_utf8_lossy((&self.data[self.index..size])))
         }
 }
 
@@ -72,13 +72,13 @@ pub fn send_status(stream: TcpStream) {
 use std::io::Write;
 use std::time;
 pub fn wrong_version(mut stream :TcpStream, client: u8, server: u8) {
-        let client = client.to_string();
+        //let client = client.to_string();
         let server = server.to_string();
-        
+
         stream.set_write_timeout(Some(time::Duration::new(10, 0)));
         let message = ["{\"text\": \"Incompatable client (Are you using a beta or old version?)".as_bytes(),
           (",\n Your Protocol Version is ").as_bytes(),
-          client.as_bytes(),
+          &client.to_string().into_bytes()[..],
           ("\n Server verrsion: ").as_bytes(),
           server.as_bytes(),
           ("\"}").as_bytes(),
@@ -97,13 +97,12 @@ pub fn wrong_version(mut stream :TcpStream, client: u8, server: u8) {
                 stream.write(i);
         }
 }
-
-pub fn form_packet(mut stream: &TcpStream, data: &[&[u8]], packetid: u8) {
+pub fn form_packet(mut stream: &TcpStream, packetid: u8, data: &[&Vec<u8>]) {
         let mut data_length:usize = 0;
         for c in data {
                 data_length += (*c).len();
         }
-        let packet_length = conversion::varint::to((data_length)as i32 + 1);
+        let packet_length = conversion::varint::to((data_length)as i32 + 2);
         let _ = stream.write(&packet_length[..]);
         let _ = stream.write(&[packetid]);
         for w in data {

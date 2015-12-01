@@ -45,9 +45,9 @@ use conversion::itt; // Nothing too interesting here, besides the
 mod player;
 
 // Data Tramsfer
-use std::io::Read;
-use std::net::{TcpListener, TcpStream};
 
+use std::net::{TcpListener, TcpStream};
+use std::slice::Split;
 
 
 //Packet decoding and encoding, connection handling
