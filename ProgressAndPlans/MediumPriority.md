@@ -9,11 +9,11 @@
 * block break animation
 * map chunk bulk
 * set slot
-* Disconnect
+* Disconnect on login ** Done**
 * DISCONNECT
 
 ## FROM CLIENT
 * CHAT MESSAGE
 * PLAYER DIGGING
 * PLAYER BLOCK PLACEMENT
-* CLIENT STATUS
+* CLIENT STATUS ** Done**
