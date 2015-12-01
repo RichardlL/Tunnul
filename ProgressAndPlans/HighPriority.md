@@ -1,16 +1,16 @@
 # HIGH PRIORITY
 ## TO CLIENT
 
-* Packet Formation - see ./
+* Packet Formation - **Done**
 * Very Basic Chunk formation
-* HandShake
+* HandShake **Done**
 * Keep Alive
 * chunk data
-* Join Game
+* Join Game 
 * Spawn Position
 * RESPONSE
 * PONG
-* LOGIN SUCCESS
+* LOGIN SUCCESS 
 
 
 ## FROM CLIENT
@@ -18,4 +18,4 @@
 * Keep alive
 * Handshake
 * PING
-* LOGIN START
+* LOGIN START - **Done**
