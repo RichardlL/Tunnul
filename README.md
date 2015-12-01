@@ -1,17 +1,18 @@
 # Tunul
- -An Opensource Minecraft server
+ -Opensource Minecraft server
 
 **Progress so far**
  - encode and decode twos-complement varints
  - basic tcp to test with 
  - recieved packet reading and handling
-	
+ - encode and decode strings	
+ - packet formation
+ - handshaking to join game
 **Next Goals**
- - packet formation, handshaking join game
- - basic 1 chunk map, just to test spawning, and to
- - write other things before writing map format and "filesystem"
  - keep alive
+ - basic single chunk map, just to test development
  - spawn position
+ 
 	
 
 
