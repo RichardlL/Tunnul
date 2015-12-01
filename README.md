@@ -8,6 +8,7 @@
  - encode and decode strings	
  - packet formation
  - handshaking to join game
+
 **Next Goals**
  - keep alive
  - basic single chunk map, just to test development
