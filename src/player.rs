@@ -96,6 +96,10 @@ pub struct Player {
         stream: TcpStream
 }
 use std::hash::{Hash, SipHasher, Hasher};
+use hyper;
+use hyper::client::IntoUrl;
+use hyper::client::response::Response;
+use std::io::Read;
 impl Player {
         // Logins in player if existing found, or creates new
         // Feature: record and check
@@ -125,9 +129,9 @@ impl Player {
         }
         fn confirm_login(&self) {
                 //uuid is for Minecraft Server login, different than the  EID hash we used 
-                let uuid:Vec<u8> = get_uuid
                 let mut name= &conversion::to_string(self.name.clone());
-                packet::form_packet(self.stream.try_clone().unwrap(), 0x02, &[&uuid, &name[0], &name[1]]);
+                let uuid = self.get_uuid();
+                packet::form_packet(self.stream.try_clone().unwrap(), 0x02, &[&vec![32u8],&self.get_uuid() , &name[0], &name[1]]);
         }
         fn send_spawn(&self) {
                 let data:[u8;8] = unsafe{ mem::transmute(self.respawn.form_postition())};
@@ -136,8 +140,31 @@ impl Player {
                                 .collect::<Vec<u8>>();
                 packet::form_packet(self.stream.try_clone().unwrap(), 0x5u8, &[&data])
         }
-
+        fn get_uuid(&self) -> Vec<u8> {
+                let a:&[char;1] = &['-'];
+                hyper::Client::new()
+                .get(&("https://api.mojang.com/users/profiles/minecraft/".to_string() + &self.name))
+                .header(hyper::header::Connection::close())
+                .send()
+                .unwrap()
+                .chars()
+                .skip(7) //skips unnessecary json
+                .take(8)
+                .map(|i| i.unwrap())
+                .chain(&a)
+                .unwrap()
+                .take(5)
+                .chain(&a)
+                .unwrap()
+                .take(5)
+                .chain(a)
+                .unwrap()
+                .take(17)
+                .collect::<String>()
+                .into_bytes()
+        }
 }
+
 use std::mem;
 use std::{thread,time};
 use packet;
@@ -170,6 +197,4 @@ pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
 use std::borrow;
 
 use std::slice::Split;
-
-
 

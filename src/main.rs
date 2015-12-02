@@ -22,17 +22,17 @@
  even if they are not needed in main.rs, they'll just be
  commented out
 
- std uses will just be explained in their own file
-
- Each module will get its own folder, just to make src/ look less
- cluttered and main.rs easier to find.
-
  Linebreaks will be used liberallyto group "piecies of logic",
  like a period does for for a complete thought with a sentence,
  or at discretion to improve readabilty
 
 -------------------------------------------------------------------*/
 #![feature(ip_addr)]
+#![feature(io)]
+#![feature(slice_patterns)]
+extern crate hyper;
+// We have to get UUID from Mojang servs :(
+
 mod conversion;      // Conversion to and from minecraft's format.
 use conversion::itt; // Nothing too interesting here, besides the
                      // algorithms, which are probably bad examples;
@@ -43,7 +43,6 @@ use conversion::itt; // Nothing too interesting here, besides the
 
 // Player loop, packet handling, and player data, player actions
 mod player;
-
 // Data Tramsfer
 
 use std::net::{TcpListener, TcpStream};
