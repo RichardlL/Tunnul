@@ -17,6 +17,7 @@ use std::net::TcpStream;
 use conversion;
 use std::io::Read;
 use std::borrow;
+use std::{str,string};
 impl Packet {
         //Takes a tcp stream and pulls a packet from it
         //MAJOR FIX : no guarantee of full packet
@@ -34,15 +35,21 @@ impl Packet {
         }
         // Gets varint from current index position and updates index
         pub fn get_varint(&mut self) -> i32 {
-                let (result, bytes) = conversion::varint::from((&self.data[self.index..self.data.len()]));
-                self.index += bytes;
+                let (result, bytes_read) = conversion::varint::from((&self.data[self.index..self.data.len()]));
+                self.index += bytes_read;
                 result
         }
         //gets string from current index and updates position
-        pub fn get_string(&mut self) -> String {
-                let size = (self.get_varint()+1) as usize;
-                borrow::Cow::into_owned(String::from_utf8_lossy((&self.data[self.index..size])))
+        pub fn get_str(&mut self) -> &str {
+                let end = self.get_varint()as usize + 1;
+                let begin = self.index;
+                self.index = end;
+                str::from_utf8(&self.data[begin..end]).unwrap()
         }
+        pub fn get_string(&mut self) -> String {
+                string::ToString::to_string(self.get_str())
+        }
+
 }
 
 // Checks if client wants the server's status or to join
@@ -61,7 +68,7 @@ pub fn new_connection(stream: TcpStream) {
         let _ = match new_player_packet {
                 //Packet { id: 0 , data: d, index:_} if d.is_empty() => {}, //FEATURE new_player_packet.ping_response(),
 
-                Packet { id:0, ..} =>  thread::spawn(move|| {player::player_connect(new_player_packet, stream)}),
+                Packet { id:0, ..} =>  thread::spawn(move|| {player::player_login(new_player_packet, stream)}),
 
                 Packet{..} => panic!("Malformed login packet"),
         };
@@ -97,7 +104,7 @@ pub fn wrong_version(mut stream :TcpStream, client: u8, server: u8) {
                 stream.write(i);
         }
 }
-pub fn form_packet(mut stream: &TcpStream, packetid: u8, data: &[&Vec<u8>]) {
+pub fn form_packet(mut stream: TcpStream, packetid: u8, data: &[&Vec<u8>]) {
         let mut data_length:usize = 0;
         for c in data {
                 data_length += (*c).len();

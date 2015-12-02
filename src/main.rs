@@ -32,7 +32,7 @@
  or at discretion to improve readabilty
 
 -------------------------------------------------------------------*/
-
+#![feature(ip_addr)]
 mod conversion;      // Conversion to and from minecraft's format.
 use conversion::itt; // Nothing too interesting here, besides the
                      // algorithms, which are probably bad examples;
@@ -49,6 +49,9 @@ mod player;
 use std::net::{TcpListener, TcpStream};
 use std::slice::Split;
 
+//names, chat
+use std::{str,string};
+
 
 //Packet decoding and encoding, connection handling
 mod packet;
@@ -56,6 +59,8 @@ mod packet;
 // multi-threading - used all over
 use std::thread;
 
+// Uniquie player identifier
+use std::hash::{Hash, SipHasher, Hasher};
 
 // Spawns Threads for connections, and hands off to new_connection
 //  to decide if its ping or to join game

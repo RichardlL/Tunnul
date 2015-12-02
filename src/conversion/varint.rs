@@ -17,7 +17,6 @@ pub fn from(src_array:&[u8]) -> (i32, usize) {
                 if src_array[vi_size] & 0x80u8 == 0 {
                         break;
                 }
-                println!("source: {}", src_array[vi_size]);
                 vi_size += 1;
 
         }
