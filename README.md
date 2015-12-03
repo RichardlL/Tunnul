@@ -3,7 +3,7 @@
  - If you see something you can fix, submit a pull request! I'm learning!
  - It only uses the standard library!
 
-#### Features!
+### Features!
  - You can join!
  - rotate freely!
  - Watch a sunset! (for twenty seconds before it times out)
