@@ -4,10 +4,10 @@
  - It only uses the standard library!
 
 ### Features!
- - You can join!
- - rotate freely!
- - Watch a sunset! (for twenty seconds before it times out)
- - Have your name Printed to the console!
+ - **You can join!*
+ - **rotate freely!**
+ - **Watch a sunrise!** (for twenty seconds before it times out)
+ - **Have your name Printed to the console!**
 
 ### Short Term goals
  - encode and decode two's complement varints **Done!**
