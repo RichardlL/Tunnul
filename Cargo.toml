@@ -5,5 +5,4 @@ authors = ["Richard Lettich <lettrich42@gmail.com>"]
 
 
 include = ["src/**/*", "Cargo.toml"]
-[dependencies]
-hyper = "0.7.0"
+

@@ -53,39 +53,39 @@ Player
 //game_type
  // 0..2 {survival, creative, adventure}
 
+use std::mem;
+use std::slice;
+
 pub struct Location {
-        x: i32,
-        y: Option<i16>,
-        z: i32,
-        pitch: Option<f32>,
-        yaw: Option<f32>,
+        x: f64,
+        y: f64,
+        z: f64,
+        pitch: f32,
+        yaw: f32,
 }
 impl Location {
         fn new() -> Location {
                 Location {
-                        x: 0,
-                        y: None,
-                        z: 0,
-                        pitch: Some(0.0),
-                        yaw: Some(0.0)
+                        x: 0.0,
+                        y: 60.0,
+                        z: 0.0,
+                        pitch: 0.0,
+                        yaw: 0.0
                 }
         }
         fn form_postition(&self) -> u64 {
-                let mut result:u64 = ((self.x & 0x3FFFFFFi32)as u64) << 38 | (self.z & 0x3FFFFFFi32) as u64;
-                match self.y {
-                        Some(y) => result | (((y & 0xFFF)as u64) << 26) as u64,
-                        None => result
-                }
+                let result:u64 = (((self.x as u64) & 0x3FFFFFFu64) << 38)
+                        | ((self.z as u64) & 0x3FFFFFFu64)
+                        | (((self.y as u64)& 0xFFFu64) << 26);
+                result
         }
 }
 
 pub struct Player {
-        eid: u64,
+        eid: u32,
         name: String,
         location: Location,
         on_ground: bool,
-        pitch: f32,
-        yaw: f32,
         health: f32,
         food: f32,
         food_saturation: f32,
@@ -96,76 +96,73 @@ pub struct Player {
         stream: TcpStream
 }
 use std::hash::{Hash, SipHasher, Hasher};
-use hyper;
-use hyper::client::IntoUrl;
-use hyper::client::response::Response;
-use std::io::Read;
+
 impl Player {
         // Logins in player if existing found, or creates new
         // Feature: record and check
-        fn from_stream(mut stream: TcpStream) -> Player {
-                let mut login_packet = Packet::new(&mut stream);
+        fn from_stream(stream: &mut TcpStream) -> Player {
+                let mut login_packet = Packet::new(&mut stream.try_clone().unwrap());
                 let player_name = login_packet.get_string();
                 let mut hash_gen = SipHasher::new();
                 stream.peer_addr().unwrap().ip().hash(&mut hash_gen);
                 hash_gen.write(player_name.as_bytes());
                 let hash = hash_gen.finish();
                 Player {
-                        eid: hash,
+                        eid: ((hash & 0xFFFFFFFF) as u32),
                         name: player_name,
                         location: Location::new(),
                         respawn: Location::new(), //user server spawn
                         on_ground: true,
-                        pitch: 0.0,
-                        yaw: 0.0,
                         health: 20.0,
                         food: 20.0,
                         food_saturation: 5.0,
-                        world_type: 1,
+                        world_type: 0,
                         game_mode: 0,
                         reputation: 0,
-                        stream: stream
+                        stream: stream.try_clone().unwrap()
                 }
         }
         fn confirm_login(&self) {
                 //uuid is for Minecraft Server login, different than the  EID hash we used 
-                let mut name= &conversion::to_string(self.name.clone());
-                let uuid = self.get_uuid();
-                packet::form_packet(self.stream.try_clone().unwrap(), 0x02, &[&vec![32u8],&self.get_uuid() , &name[0], &name[1]]);
+                let name= &conversion::to_string(self.name.clone());
+                let uuid = &conversion::to_string("de305d54-75b4-431b-adb2-eb6b9e546014".to_string());
+                packet::form_packet(self.stream.try_clone().unwrap(), 0x02, &[&uuid[0], &uuid[1] , &name[0], &name[1]]);
         }
-        fn send_spawn(&self) {
+        fn join_game(&self) {
+                let eid:[u8;4] = unsafe { mem::transmute_copy(&self.eid)};
+                let gamemode:u8 = self.game_mode.clone();
+                let world_type:u8 = self.world_type.clone() as u8;
+                let difficulty = 0x0u8; //Feature: difficulty
+                let max_players = 0x1111111u8;
+                let leveltype = conversion::to_string("default".to_string());
+                let debug_allow = 0x0u8; //only applies to vanilla players, so useless to use...
+                packet::form_packet_bytes(&mut self.stream.try_clone().unwrap(), 0x1u8, &[
+                        &eid[..],
+                        &[gamemode,
+                        world_type,
+                        difficulty,
+                        max_players],
+                        leveltype[0].as_ref(),
+                        leveltype[1].as_ref(),
+                        &[debug_allow]]);
+        }
+        fn send_spawn(&mut self) {
                 let data:[u8;8] = unsafe{ mem::transmute(self.respawn.form_postition())};
-                let data = data.iter()
-                                .cloned()
-                                .collect::<Vec<u8>>();
-                packet::form_packet(self.stream.try_clone().unwrap(), 0x5u8, &[&data])
+
+                packet::form_packet_bytes(&mut self.stream, 0x5u8, &[&data])
         }
-        fn get_uuid(&self) -> Vec<u8> {
-                let a:&[char;1] = &['-'];
-                hyper::Client::new()
-                .get(&("https://api.mojang.com/users/profiles/minecraft/".to_string() + &self.name))
-                .header(hyper::header::Connection::close())
-                .send()
-                .unwrap()
-                .chars()
-                .skip(7) //skips unnessecary json
-                .take(8)
-                .map(|i| i.unwrap())
-                .chain(&a)
-                .unwrap()
-                .take(5)
-                .chain(&a)
-                .unwrap()
-                .take(5)
-                .chain(a)
-                .unwrap()
-                .take(17)
-                .collect::<String>()
-                .into_bytes()
+        fn send_location(&mut self) {
+                let data:[u8;24] = unsafe { mem::transmute([
+                        self.location.x,
+                        self.location.y,
+                        self.location.z,])};
+                let data2:[u8;8] = unsafe { mem::transmute([
+                        self.location.pitch,
+                        self.location.yaw])};
+                packet::form_packet_bytes(&mut self.stream,0x8u8,&[&data,&data2,&[0x0u8]]);
         }
 }
 
-use std::mem;
 use std::{thread,time};
 use packet;
 use packet::{Packet};
@@ -173,6 +170,7 @@ use std::net::TcpStream;
 use conversion;
 
 pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
+        // We are handling everything manually here
         //SETTING: Version number (of minecraft packet protocol)
         // version comes first in packet, but we dont need that if they just want to ping us,
         // so well save it for later
@@ -189,12 +187,17 @@ pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
         } else if vers != client_vers {
                 packet::wrong_version(stream, client_vers, vers);
         } else {
-                let mut player = Player::from_stream(stream);
+                let mut player = Player::from_stream(&mut stream);
                 player.confirm_login();
+                player.join_game();
                 player.send_spawn();
+                player.send_location();
+                println!("{}, has Joined this dank server", &player.name);
+                // This is confirming the location, but the loop will do that
+                loop {
+                }
         }
 }
-use std::borrow;
 
-use std::slice::Split;
+
 

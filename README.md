@@ -13,8 +13,9 @@
  - handshaking to join game **Done!**
  - Disconnect on login (wrong protocol version **Done!**
  - CLIENT STATUS **Done!**
- - Confirm Login **Done, but need function to get uuid**
- - Get uuid from mojang api 
+ - Confirm Login **Done!**
+ - Get uuid from mojang api *Done!* (workaround) 
+ - Join game **DONE!** 
  - keep alive
  - basic single chunk map, just to test development
  - spawn position **Done!**
@@ -22,3 +23,7 @@
  - respawn **Done!**
  - Block Change
  - player block placement
+
+### Milestones
+ - **Tunulis able to communicate with Minecraft!**
+ - **You can join the server!**

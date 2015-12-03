@@ -30,7 +30,6 @@
 #![feature(ip_addr)]
 #![feature(io)]
 #![feature(slice_patterns)]
-extern crate hyper;
 // We have to get UUID from Mojang servs :(
 
 mod conversion;      // Conversion to and from minecraft's format.

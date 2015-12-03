@@ -16,7 +16,6 @@ use std::time::Duration;
 use std::net::TcpStream;
 use conversion;
 use std::io::Read;
-use std::borrow;
 use std::{str,string};
 impl Packet {
         //Takes a tcp stream and pulls a packet from it
@@ -65,7 +64,7 @@ pub fn new_connection(stream: TcpStream) {
         let _ = stream.set_read_timeout(Some(Duration::new(20, 0)));
 
         let new_player_packet = Packet::new(&mut stream);
-        let _ = match new_player_packet {
+        match new_player_packet {
                 //Packet { id: 0 , data: d, index:_} if d.is_empty() => {}, //FEATURE new_player_packet.ping_response(),
 
                 Packet { id:0, ..} =>  thread::spawn(move|| {player::player_login(new_player_packet, stream)}),
@@ -109,11 +108,23 @@ pub fn form_packet(mut stream: TcpStream, packetid: u8, data: &[&Vec<u8>]) {
         for c in data {
                 data_length += (*c).len();
         }
-        let packet_length = conversion::varint::to((data_length)as i32 + 2);
+        let packet_length = conversion::varint::to((data_length)as i32 + 1);
         let _ = stream.write(&packet_length[..]);
         let _ = stream.write(&[packetid]);
         for w in data {
                 let _ = stream.write(w);
+        }
+}
+pub fn form_packet_bytes(mut stream:&mut TcpStream, packetid: u8, data: &[&[u8]]) {
+        let mut data_length = 0usize;
+        for c in data {
+                data_length += (*c).len();
+        }
+        let packet_length = conversion::varint::to((data_length)as i32 + 1);
+        let _ = stream.write(&packet_length[..]);
+        let _ = stream.write(&[packetid]);
+        for w in data {
+                let _ = stream.write(*w);
         }
 }
 
