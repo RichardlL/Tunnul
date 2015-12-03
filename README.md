@@ -1,8 +1,8 @@
 # Tunul
 #### Total progress - You can join! And rotate freely! (for twenty seconds before it times out)!
- - Building a Minecraft server as an expierement
-  - If you see something you can fix, submit a pull request! I'm learning!
-  - It only uses the standard library!
+ - Building a Minecraft server for fun!
+ - If you see something you can fix, submit a pull request! I'm learning!
+ - It only uses the standard library!
 
 ### Short Term goals
  - encode and decode two's complement varints **Done!**
