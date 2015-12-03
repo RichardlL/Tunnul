@@ -1,5 +1,5 @@
 # Tunul
-#### Total progress - You can join! And rotate freely! Watch a beautiful sunset (for twenty seconds before it times out)!
+#### Total progress - You can join! And rotate freely! (for twenty seconds before it times out)!
  - Building a Minecraft server as an expierement
   - If you see something you can fix, submit a pull request! I'm learning!
   - It only uses the standard library!
