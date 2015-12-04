@@ -12,7 +12,6 @@
 pub mod itt;
 pub mod varint;
 
-use std::cell::RefCell;
 //turns string to bytes, and prefixes with length as varint
 pub fn to_string(src_string : String) -> [Vec<u8>;2] {
         let src_string = src_string.into_bytes();

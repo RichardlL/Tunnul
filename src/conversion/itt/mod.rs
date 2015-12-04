@@ -15,7 +15,6 @@ use std::i32;
 pub fn read(src_array:&mut TcpStream) -> (i32, usize) {
         let mut result:i32 = 0;
         let mut vi_size:usize = 0;
-        let mut temp: u8;
         for byte in  src_array.bytes() {
                 let byte = byte.unwrap();
                 result |= ((byte  & 0x7Fu8)  as i32)  << (7 * vi_size);

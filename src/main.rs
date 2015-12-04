@@ -28,8 +28,8 @@
 
 -------------------------------------------------------------------*/
 #![feature(ip_addr)]
-#![feature(io)]
 #![feature(slice_patterns)]
+
 // We have to get UUID from Mojang servs :(
 
 mod conversion;      // Conversion to and from minecraft's format.
@@ -56,23 +56,33 @@ mod packet;
 
 // multi-threading - used all over
 use std::thread;
+use std::sync::mpsc::channel;
+
 
 // Uniquie player identifier
-use std::hash::{Hash, SipHasher, Hasher};
+//use std::hash::{Hash, SipHasher, Hasher};
 
 // Spawns Threads for connections, and hands off to new_connection
 //  to decide if its ping or to join game
 fn main() {
         println!("Starting Tunul");
-
         let socket = match TcpListener::bind("127.0.0.1:25565") {
                 Ok(x) => x,
                 Err(_) => panic!("Error Binding, Do you have permission, or is another process running?" ),
         };
 
         println!("Bound Server Successfully, Open for Connections");
+        
+        // we'll have a seperate thread that handles all of the keep alives sends
+        // (server has to ping client ever 20 seconds,)
+        // but well let each client's thread handle the response, so it will know when a client disconnects
+        let (keep_alive_tx, keep_alive_rx) = channel();
+        thread::spawn(move|| {packet::keep_alive_loop(keep_alive_rx)});
+        
         for connection in socket.incoming() {
-                thread::spawn(move|| { packet::new_connection(connection.unwrap()) });
+                let connection = connection.unwrap();
+                let _ = keep_alive_tx.send(connection.try_clone().unwrap());
+                thread::spawn(move|| { packet::new_connection(connection) } );
         }
 }
 

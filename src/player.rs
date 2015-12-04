@@ -54,7 +54,6 @@ Player
  // 0..2 {survival, creative, adventure}
 
 use std::mem;
-use std::slice;
 
 pub struct Location {
         x: f64,
@@ -117,13 +116,14 @@ impl Player {
                         food: 20.0,
                         food_saturation: 5.0,
                         world_type: 0,
-                        game_mode: 0,
+                        game_mode: 1,
                         reputation: 0,
                         stream: stream.try_clone().unwrap()
                 }
         }
         fn confirm_login(&self) {
-                //uuid is for Minecraft Server login, different than the  EID hash we used 
+                // uuid is for Minecraft Server login, different than the  EID hash we used
+                // Since I have decided to not use mojang to autheticate, this is garbage filler to make it compatibale
                 let name= &conversion::to_string(self.name.clone());
                 let uuid = &conversion::to_string("de305d54-75b4-431b-adb2-eb6b9e546014".to_string());
                 packet::form_packet(self.stream.try_clone().unwrap(), 0x02, &[&uuid[0], &uuid[1] , &name[0], &name[1]]);
@@ -163,7 +163,6 @@ impl Player {
         }
 }
 
-use std::{thread,time};
 use packet;
 use packet::{Packet};
 use std::net::TcpStream;
@@ -193,9 +192,7 @@ pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
                 player.send_spawn();
                 player.send_location();
                 println!("{}, has Joined this dank server", &player.name);
-                // This is confirming the location, but the loop will do that
-                loop {
-                }
+                
         }
 }
 

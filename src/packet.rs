@@ -127,4 +127,28 @@ pub fn form_packet_bytes(mut stream:&mut TcpStream, packetid: u8, data: &[&[u8]]
                 let _ = stream.write(*w);
         }
 }
-
+// checks for new players
+// If write fails (stream closed), it stops sending keep alive
+use std::sync::mpsc;
+pub fn keep_alive_loop(rx: mpsc::Receiver<TcpStream>) {
+        let mut connections:Vec<TcpStream> = Vec::new();
+        loop {
+                match rx.try_recv() {
+                        Ok(stream) => connections.push(stream),
+                        Err(_) => (),
+                }
+                let mut length = connections.len();
+                let mut i:usize = 0;
+                while i < length {
+                        // Having it be random is useless
+                        if connections[i].write(&[0x2u8,0x0u8,0x0u8]).is_err() {
+                                connections.swap_remove(i);
+                                length -= 1;
+                                println!("disconnected");
+                                continue;
+                        }
+                        i += 1;
+                }
+                thread::sleep(Duration::new(5, 0));
+        }
+}
