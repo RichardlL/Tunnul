@@ -1,7 +1,14 @@
 # Tunul
- - Building a Minecraft server as an expierement
-  - If you see something you can fix, submit a pull request! I'm learning!
-  - It only uses the standard library!
+ - Building a Minecraft server for fun!
+ - If you see something you can fix, submit a pull request! I'm learning!
+ - It only uses the standard library!
+
+### Features!
+ - **You can join!**
+ - **rotate freely!**
+ - **Watch a sunrise!** (for twenty seconds before it times out)
+ - **Have your name Printed to the console!**
+ - **The Compiler only gives you 27 warnings when you build it!**
 
 ### Short Term goals
  - encode and decode two's complement varints **Done!**
