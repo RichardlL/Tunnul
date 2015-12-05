@@ -61,7 +61,7 @@ use std::sync::mpsc::channel;
 // Spawns Threads for connections, and hands off to new_connection
 //  to decide if its ping or to join game
 fn main() {
-        println!("Starting Tunul ");
+        println!("Starting Tunul  ");
         let socket = match TcpListener::bind("127.0.0.1:25565") {
                 Ok(x) => x,
                 Err(_) => panic!("Error Binding, Do you have permission, or is another process running?" ),
