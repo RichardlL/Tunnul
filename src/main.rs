@@ -18,19 +18,18 @@
  its use in the project, in an attempt to make this program easily
  navigate-able reader friendly
 
- All modules written in this progect be explained here,
+ All modules written in this project be explained here,
  even if they are not needed in main.rs, they'll just be
  commented out
 
- Linebreaks will be used liberallyto group "piecies of logic",
+ Linebreaks will be used liberally to group "pieces of logic",
  like a period does for for a complete thought with a sentence,
- or at discretion to improve readabilty
+ or at discretion to improve readability
 
 -------------------------------------------------------------------*/
 #![feature(ip_addr)]
 #![feature(slice_patterns)]
 
-// We have to get UUID from Mojang servs :(
 
 mod conversion;      // Conversion to and from minecraft's format.
 use conversion::itt; // Nothing too interesting here, besides the
@@ -59,13 +58,10 @@ use std::thread;
 use std::sync::mpsc::channel;
 
 
-// Uniquie player identifier
-//use std::hash::{Hash, SipHasher, Hasher};
-
 // Spawns Threads for connections, and hands off to new_connection
 //  to decide if its ping or to join game
 fn main() {
-        println!("Starting Tunul");
+        println!("Starting Tunul ");
         let socket = match TcpListener::bind("127.0.0.1:25565") {
                 Ok(x) => x,
                 Err(_) => panic!("Error Binding, Do you have permission, or is another process running?" ),
