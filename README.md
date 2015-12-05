@@ -1,4 +1,4 @@
-# Tunul
+# Tunnul
  - Building a Minecraft server for fun!
  - If you see something you can fix, submit a pull request! I'm learning!
  - It only uses the standard library!
@@ -6,7 +6,7 @@
 ### Features!
  - **You can join!**
  - **rotate freely!**
- - **Watch a sunrise!** (for twenty seconds before it times out)
+ - **Watch a sunrise!**
  - **Have your name Printed to the console!**
  - **The Compiler only gives you 27 warnings when you build it!**
 
@@ -21,9 +21,9 @@
  - Disconnect on login (wrong protocol version **Done!**
  - CLIENT STATUS **Done!**
  - Confirm Login **Done!**
- - Get uuid from mojang api *Done!* (workaround) 
+ - Get uuid from mojang api **Done!**
  - Join game **DONE!** 
- - keep alive
+ - keep alive **Done!**
  - basic single chunk map, just to test development
  - spawn position **Done!**
  - ping response
@@ -32,5 +32,5 @@
  - player block placement
 
 ### Milestones
- - **Tunulis able to communicate with Minecraft!**
+ - **Tunnul is able to communicate with Minecraft!**
  - **You can join the server!**
