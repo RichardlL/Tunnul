@@ -1,3 +1,14 @@
+/* Tunnul - Minecraft server1
+ * Copyright 2015 Richard Lettich
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
+ * IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
+ */
+
 // Note: All packets sent after login will be in player.rs
 
 // Packet id is defined by minecraft so you know how to handle the
@@ -17,6 +28,8 @@ use std::net::TcpStream;
 use conversion;
 use std::io::Read;
 use std::{str,string};
+use std::mem;
+
 impl Packet {
         //Takes a tcp stream and pulls a packet from it
         //MAJOR FIX : no guarantee of full packet
@@ -33,11 +46,24 @@ impl Packet {
                 Packet { id: packetid as usize, data: buff,  index: 0 }
         }
         // Gets varint from current index position and updates index
-        pub fn get_varint(&mut self) -> i32 {
-                let (result, bytes_read) = conversion::varint::from((&self.data[self.index..self.data.len()]));
-                self.index += bytes_read;
-                result
-        }
+        // Varint is official 32 bits, And Varint long is 64,
+        // But Using generics or copy/pasting to use with 32 benefit is insignificant
+        // (4 bytes vs 2, and we typically only use 4 max per packet)
+        pub fn get_varint(&mut self) -> i64 {
+        	let mut result:i64 = 0;
+        	let mut vi_size:usize = 0;
+        	loop {
+                	result |= ((self.data[vi_size] & 0x7Fu8 ) as i64)  << (7 * vi_size) ;
+                	if self.data[vi_size] & 0x80u8 == 0 {
+                        	break;
+                	}
+                	vi_size += 1;
+        	}
+        	vi_size += 1;
+        	self.index += vi_size;
+        	result |= ((result & 0x40) << 57) >> (63 - (7 * vi_size));
+        	result
+	}
         //gets string from current index and updates position
         pub fn get_str(&mut self) -> &str {
                 let end = self.get_varint()as usize + 1;
@@ -48,8 +74,15 @@ impl Packet {
         pub fn get_string(&mut self) -> String {
                 string::ToString::to_string(self.get_str())
         }
-
+        // Gets Type T and updates buffer, where T is Statically sized
+        // (anything but strings, arrays, varints)
+	pub fn get<T>(&mut self) -> T {
+	        let start = self.index;
+	        self.index += mem::size_of::<T>();
+	        unsafe { mem::transmute_copy(&[start, self.index].reverse())} 
+	}
 }
+
 
 // Checks if client wants the server's status or to join
 // player_connect goes to player/mod.rs
@@ -62,8 +95,7 @@ use player;
 pub fn new_connection(stream: TcpStream) {
         let mut stream = stream;
         let _ = stream.set_read_timeout(Some(Duration::new(20, 0)));
-
-        let new_player_packet = Packet::new(&mut stream);
+	let mut new_player_packet = Packet::new(&mut stream);
         match new_player_packet {
                 //Packet { id: 0 , data: d, index:_} if d.is_empty() => {}, //FEATURE new_player_packet.ping_response(),
 
@@ -78,55 +110,13 @@ pub fn send_status(stream: TcpStream) {
 use std::io::Write;
 use std::time;
 pub fn wrong_version(mut stream :TcpStream, client: u8, server: u8) {
-        //let client = client.to_string();
-        let server = server.to_string();
+        let mut temp = format!("{{\"text\": \"Version of Minecraft Not Compatible, \n Your Protocol Version is: {} \n Server Verrsion: {}}}", client, server);
+        Send! { &mut stream,
+                0x0,
+                temp
+        };
+}
 
-        stream.set_write_timeout(Some(time::Duration::new(10, 0)));
-        let message = ["{\"text\": \"Incompatable client (Are you using a beta or old version?)".as_bytes(),
-          (",\n Your Protocol Version is ").as_bytes(),
-          &client.to_string().into_bytes()[..],
-          ("\n Server verrsion: ").as_bytes(),
-          server.as_bytes(),
-          ("\"}").as_bytes(),
-        ];
-        let mut message_length:usize = 0;
-        for i in &message {
-                message_length += i.len();
-                println!("i: {}",i.len());
-        }
-        let message_length_var = conversion::varint::to((message_length) as i32);
-        let packet_length = conversion::varint::to((message_length_var.len() as i32)+ (message_length as i32) + 1);
-        stream.write(&packet_length);
-        stream.write(&[0x00]);
-        stream.write(&message_length_var);
-        for i in &message {
-                stream.write(i);
-        }
-}
-pub fn form_packet(mut stream: TcpStream, packetid: u8, data: &[&Vec<u8>]) {
-        let mut data_length:usize = 0;
-        for c in data {
-                data_length += (*c).len();
-        }
-        let packet_length = conversion::varint::to((data_length)as i32 + 1);
-        let _ = stream.write(&packet_length[..]);
-        let _ = stream.write(&[packetid]);
-        for w in data {
-                let _ = stream.write(w);
-        }
-}
-pub fn form_packet_bytes(mut stream:&mut TcpStream, packetid: u8, data: &[&[u8]]) {
-        let mut data_length = 0usize;
-        for c in data {
-                data_length += (*c).len();
-        }
-        let packet_length = conversion::varint::to((data_length)as i32 + 1);
-        let _ = stream.write(&packet_length[..]);
-        let _ = stream.write(&[packetid]);
-        for w in data {
-                let _ = stream.write(*w);
-        }
-}
 // checks for new players
 // If write fails (stream closed), it stops sending keep alive
 use std::sync::mpsc;
@@ -144,7 +134,7 @@ pub fn keep_alive_loop(rx: mpsc::Receiver<TcpStream>) {
                         if connections[i].write(&[0x2u8,0x0u8,0x0u8]).is_err() {
                                 connections.swap_remove(i);
                                 length -= 1;
-                                println!("disconnected");
+                                println!("Client Disconnected");
                                 continue;
                         }
                         i += 1;

@@ -1,5 +1,5 @@
 /*
- * Tunul - Minecraft server
+ * Tunnul - Minecraft server
  * Copyright 2015 Richard Lettich
  *
  *
@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
- * TUNUL IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
+ * IT IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
  */
 
 /*------------------------------------------------------------------/
@@ -29,10 +29,11 @@
 -------------------------------------------------------------------*/
 #![feature(ip_addr)]
 #![feature(slice_patterns)]
-
+#[macro_use]
+mod packet_sending;
 
 mod conversion;      // Conversion to and from minecraft's format.
-use conversion::itt; // Nothing too interesting here, besides the
+                     // Nothing too interesting here, besides the
                      // algorithms, which are probably bad examples;
                      // anything that uses this will have to use:
                      // conversion:: directly
@@ -42,20 +43,24 @@ use conversion::itt; // Nothing too interesting here, besides the
 // Player loop, packet handling, and player data, player actions
 mod player;
 // Data Tramsfer
-
 use std::net::{TcpListener, TcpStream};
 use std::slice::Split;
-
-//names, chat
-use std::{str,string};
 
 
 //Packet decoding and encoding, connection handling
 mod packet;
+// World loading
+mod world;
+
+// Map Saving/loading
+use std::path::Path;
+use std::fs;
 
 // multi-threading - used all over
 use std::thread;
 use std::sync::mpsc::channel;
+
+
 
 
 // Spawns Threads for connections, and hands off to new_connection
@@ -66,15 +71,15 @@ fn main() {
                 Ok(x) => x,
                 Err(_) => panic!("Error Binding, Do you have permission, or is another process running?" ),
         };
-
+ 
         println!("Bound Server Successfully, Open for Connections");
-        
+
         // we'll have a seperate thread that handles all of the keep alives sends
         // (server has to ping client ever 20 seconds,)
         // but well let each client's thread handle the response, so it will know when a client disconnects
         let (keep_alive_tx, keep_alive_rx) = channel();
         thread::spawn(move|| {packet::keep_alive_loop(keep_alive_rx)});
-        
+
         for connection in socket.incoming() {
                 let connection = connection.unwrap();
                 let _ = keep_alive_tx.send(connection.try_clone().unwrap());

@@ -1,5 +1,5 @@
 /*
- * Tunul - Minecraft server
+ * Tunnul - Minecraft server
  * Copyright 2015 Richard Lettich
  *
  *
@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
- * TUNUL IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
+ * IT IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
  */
 
 /*-/////////
@@ -52,15 +52,16 @@ Player
 
 //game_type
  // 0..2 {survival, creative, adventure}
-
+#[macro_use]
 use std::mem;
-
+use packet_sending;
+use packet_sending::CanSend;
 pub struct Location {
-        x: f64,
-        y: f64,
-        z: f64,
-        pitch: f32,
-        yaw: f32,
+        pub x: f64,
+        pub y: f64,
+        pub z: f64,
+        pub pitch: f32,
+        pub yaw: f32,
 }
 impl Location {
         fn new() -> Location {
@@ -78,12 +79,19 @@ impl Location {
                         | (((self.y as u64)& 0xFFFu64) << 26);
                 result
         }
+        // Note - the actual distance is the square root of this, this is simply for hacking, etc
+        pub fn distance(&self, loc: &Location) -> f64 {
+                (self.x - loc.x).powi(2) + (self.z - loc.z).powi(2)
+        }
 }
+
+use std::io::Write;
+use std::net::TcpStream;
 
 pub struct Player {
         eid: u32,
-        name: String,
-        location: Location,
+        pub name: String,
+        pub location: Location,
         on_ground: bool,
         health: f32,
         food: f32,
@@ -95,6 +103,7 @@ pub struct Player {
         stream: TcpStream
 }
 use std::hash::{Hash, SipHasher, Hasher};
+
 
 impl Player {
         // Logins in player if existing found, or creates new
@@ -121,51 +130,40 @@ impl Player {
                         stream: stream.try_clone().unwrap()
                 }
         }
-        fn confirm_login(&self) {
-                // uuid is for Minecraft Server login, different than the  EID hash we used
-                // Since I have decided to not use mojang to autheticate, this is garbage filler to make it compatibale
-                let name= &conversion::to_string(self.name.clone());
-                let uuid = &conversion::to_string("de305d54-75b4-431b-adb2-eb6b9e546014".to_string());
-                packet::form_packet(self.stream.try_clone().unwrap(), 0x02, &[&uuid[0], &uuid[1] , &name[0], &name[1]]);
+        fn confirm_login(&mut self) {
+                Send! {&mut self.stream, 0x2u8 , "de305d54-75b4-431b-adb2-eb6b9e546014".to_string(), self.name.clone() };
         }
-        fn join_game(&self) {
-                let eid:[u8;4] = unsafe { mem::transmute_copy(&self.eid)};
-                let gamemode:u8 = self.game_mode.clone();
-                let world_type:u8 = self.world_type.clone() as u8;
-                let difficulty = 0x0u8; //Feature: difficulty
-                let max_players = 0x1111111u8;
-                let leveltype = conversion::to_string("default".to_string());
-                let debug_allow = 0x0u8; //only applies to vanilla players, so useless to use...
-                packet::form_packet_bytes(&mut self.stream.try_clone().unwrap(), 0x1u8, &[
-                        &eid[..],
-                        &[gamemode,
-                        world_type,
-                        difficulty,
-                        max_players],
-                        leveltype[0].as_ref(),
-                        leveltype[1].as_ref(),
-                        &[debug_allow]]);
+        fn join_game(&mut self) {
+                Send! { &mut self.stream,
+                        0x1,
+                        self.eid.clone(),
+                        self.game_mode.clone(),
+                        self.world_type.clone(),
+                        0x0u8,  // Fixme, Difficulty
+                        0b11111111u8, //max players
+                        "default".to_string(),
+                        0x0u8
+                }
         }
         fn send_spawn(&mut self) {
-                let data:[u8;8] = unsafe{ mem::transmute(self.respawn.form_postition())};
-
-                packet::form_packet_bytes(&mut self.stream, 0x5u8, &[&data])
+                let mut data:Vec<u8> = unsafe{ mem::transmute_copy(&self.respawn.form_postition().clone())};
+		Send! { &mut self.stream, 0x5u8, data };
         }
         fn send_location(&mut self) {
-                let data:[u8;24] = unsafe { mem::transmute([
-                        self.location.x,
-                        self.location.y,
-                        self.location.z,])};
-                let data2:[u8;8] = unsafe { mem::transmute([
-                        self.location.pitch,
-                        self.location.yaw])};
-                packet::form_packet_bytes(&mut self.stream,0x8u8,&[&data,&data2,&[0x0u8]]);
+                Send! { &mut self.stream,
+                        0x8u8,
+                        self.location.x.clone(),
+                        self.location.y.clone(),
+                        self.location.z.clone(),
+                        self.location.pitch.clone(),
+                        self.location.yaw.clone(),
+                        0x0u8 
+                };
         }
 }
 
 use packet;
 use packet::{Packet};
-use std::net::TcpStream;
 use conversion;
 
 pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
@@ -179,10 +177,10 @@ pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
         first_packet.index += first_packet.get_varint() as usize + 2;
 
         //check If they just want to ping (1 is ping , two is login)
+        //protocol is just to send empty packet, so we dont need to read it :0
         if 1 == first_packet.get_varint() {
-                //protocol is just to send empty packet, so we dont need to read it :0
                 let _ =Packet::new(&mut stream);
-                packet::send_status(stream);
+                packet::send_status(stream); 
         } else if vers != client_vers {
                 packet::wrong_version(stream, client_vers, vers);
         } else {
@@ -192,7 +190,6 @@ pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
                 player.send_spawn();
                 player.send_location();
                 println!("{}, has Joined this dank server", &player.name);
-                
         }
 }
 
