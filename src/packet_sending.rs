@@ -36,18 +36,18 @@ macro_rules! Send {
         { $stream:expr, $packet_id:expr, $( $data:expr ),* } => {
                 {	use packet_sending::CanSend;
                         use std::io::Write;
-                        use std::mem;
-                        use conversion::varint;
-                        use std::any::Any;
+                        use conversion::varint::to;
                         // Packet id is One byte
                         let mut packet_size = 1; 
                         $(
                                 packet_size += ($data).get_size();
                         )*
-                        let _ = $stream.write( &(conversion::varint::to(&mut (packet_size)))[..]);
+                        let _ = $stream.write( &(to(&mut (packet_size)))[..]);
                         let _ = $stream.write( &[($packet_id as u8)] );
+                        let mut piece = 0;
                         $(
                                 let _ = $stream.write($data.convert());
+                                println!("SENT");
                         )*
                         let _ =$stream.flush();
                 }
@@ -62,13 +62,15 @@ pub trait CanSend {
         fn convert(&mut self) -> &[u8];
 }
 
+
+
 impl<T: Any + 'static> CanSend for T {
         fn get_size(&self) -> i32 {
                 let from = self as &Any;
                 if let Some(string) = from.downcast_ref::<String>() {
                         (string.len() + varint::to(&mut ((string.len()) as i32)).len()) as i32
-                } else if let Some(bytes) = from.downcast_ref::<&[u8]>() {
-                        bytes.len() as i32
+                } else if let Some(vector) = from.downcast_ref::<Vec<u8>>() {
+                        vector.len() as i32
                 } else {
                         mem::size_of::<T>() as i32
                 }
@@ -76,34 +78,36 @@ impl<T: Any + 'static> CanSend for T {
         fn convert(&mut self) -> &[u8] {
                 let mut from = self as &mut Any;
                 if from.is::<String>() {
-                        println!("String");
                         let string = from.downcast_mut::<String>().unwrap();
-                        let new = string.clone();
-                        let string_as_bytes = new.as_bytes();
-                        let result = varint::to(&mut (string_as_bytes.len() as i32))
-                        	.iter()
-                        	.chain(string_as_bytes.iter())
-                        	.map( |x| *x)
-                        	.collect::<Vec<u8>>();
-			// Dont Judge
-			*string = unsafe { String::from_utf8_unchecked(result) }; 
+                        let string_as_bytes = string.clone().into_bytes();
+                        *string  = unsafe {
+                                String::from_utf8_unchecked(
+                                        varint::to(&mut (string_as_bytes.len() as i32))
+                                        .iter()
+                                        .chain(string_as_bytes.iter())
+                                        .map( |x| *x)
+                                        .collect::<Vec<u8>>()
+                                )
+                        };
 			string.as_bytes()
                 } else if from.is::<Vec<u8>>() {
-                        println!("Vector");
                         let vector = from.downcast_mut::<Vec<u8>>().unwrap();
                         &vector[..]
                 } else  {
-                        let mut result = from.downcast_mut::<T>().unwrap();
+                        // This takes any staticly sized type, and reverses the order of bytes,
+                        // then returns it as &[u8]
+                        let result = from.downcast_mut::<T>().unwrap();
                         let size = mem::size_of::<T>();
+                        let end = size -1; //last bytes, if we used size - i, off by 1 error
                         unsafe {
-                        let raw: *mut u8 = mem::transmute_copy(result);
-                                let mut arr = from_raw_parts_mut(raw, size);
+                        let raw: *mut u8 = mem::transmute(result);
+                                let t_as_u8_slice = from_raw_parts_mut(raw, size);
                                 for i in 0..(size/2) {
-                                        arr[i] |= arr[(size-1) -i];
-                                        arr[(size-1) -i] |= arr[i];
-                                        arr[i] |= arr[(size-1) -i];
+                                        t_as_u8_slice[i] |= t_as_u8_slice[end -i];
+                                        t_as_u8_slice[end - i] |= t_as_u8_slice[i];
+                                        t_as_u8_slice[i] |= t_as_u8_slice[end -i];
                                 }
-                                arr
+                                t_as_u8_slice
                         }
                 }	
         }

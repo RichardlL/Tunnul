@@ -42,7 +42,7 @@ impl Packet {
                 let (packetid , sizeof_packetid) = conversion::itt::read(stream);
                 let length_to_read = (length as usize) - sizeof_packetid;
                 let mut buff:Vec<u8> = vec![0;length_to_read];
-                stream.read(&mut buff);
+                let _ =stream.read(&mut buff);
                 Packet { id: packetid as usize, data: buff,  index: 0 }
         }
         // Gets varint from current index position and updates index
@@ -108,7 +108,6 @@ pub fn send_status(stream: TcpStream) {
         unimplemented!();
 }
 use std::io::Write;
-use std::time;
 pub fn wrong_version(mut stream :TcpStream, client: u8, server: u8) {
         let mut temp = format!("{{\"text\": \"Version of Minecraft Not Compatible, \n Your Protocol Version is: {} \n Server Verrsion: {}}}", client, server);
         Send! { &mut stream,

@@ -51,8 +51,11 @@ Player
 // -1..1 {nether, regular,  end}
 
 //game_type
- // 0..2 {survival, creative, adventure}
+// 0..2 {survival, creative, adventure}
 #[macro_use]
+/*fn exact<T: Sized>(input: T) -> Box<u8> {
+        
+}*/
 use std::mem;
 use packet_sending;
 use packet_sending::CanSend;
@@ -66,18 +69,18 @@ pub struct Location {
 impl Location {
         fn new() -> Location {
                 Location {
-                        x: 0.0,
+                        x: 10.0,
                         y: 60.0,
-                        z: 0.0,
+                        z: 10.0,
                         pitch: 0.0,
                         yaw: 0.0
                 }
         }
         fn form_postition(&self) -> u64 {
-                let result:u64 = (((self.x as u64) & 0x3FFFFFFu64) << 38)
+	let result = (((self.x as u64) & 0x3FFFFFFu64) << 38)
                         | ((self.z as u64) & 0x3FFFFFFu64)
                         | (((self.y as u64)& 0xFFFu64) << 26);
-                result
+	result.swap_bytes() // This is should remain little edian.
         }
         // Note - the actual distance is the square root of this, this is simply for hacking, etc
         pub fn distance(&self, loc: &Location) -> f64 {
@@ -146,8 +149,7 @@ impl Player {
                 }
         }
         fn send_spawn(&mut self) {
-                let mut data:Vec<u8> = unsafe{ mem::transmute_copy(&self.respawn.form_postition().clone())};
-		Send! { &mut self.stream, 0x5u8, data };
+                Send! { &mut self.stream, 0x5u8, self.respawn.form_postition().to_be() };
         }
         fn send_location(&mut self) {
                 Send! { &mut self.stream,
