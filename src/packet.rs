@@ -46,9 +46,6 @@ impl Packet {
                 Packet { id: packetid as usize, data: buff,  index: 0 }
         }
         // Gets varint from current index position and updates index
-        // Varint is official 32 bits, And Varint long is 64,
-        // But Using generics or copy/pasting to use with 32 benefit is insignificant
-        // (4 bytes vs 2, and we typically only use 4 max per packet)
         pub fn get_varint(&mut self) -> i64 {
         	let mut result:i64 = 0;
         	let mut vi_size:usize = 0;
@@ -75,7 +72,6 @@ impl Packet {
                 string::ToString::to_string(self.get_str())
         }
         // Gets Type T and updates buffer, where T is Statically sized
-        // (anything but strings, arrays, varints)
 	pub fn get<T>(&mut self) -> T {
 	        let start = self.index;
 	        self.index += mem::size_of::<T>();
@@ -95,12 +91,10 @@ use player;
 pub fn new_connection(stream: TcpStream) {
         let mut stream = stream;
         let _ = stream.set_read_timeout(Some(Duration::new(20, 0)));
-	let mut new_player_packet = Packet::new(&mut stream);
+	let new_player_packet = Packet::new(&mut stream);
         match new_player_packet {
                 //Packet { id: 0 , data: d, index:_} if d.is_empty() => {}, //FEATURE new_player_packet.ping_response(),
-
                 Packet { id:0, ..} =>  thread::spawn(move|| {player::player_login(new_player_packet, stream)}),
-
                 Packet{..} => panic!("Malformed login packet"),
         };
 }

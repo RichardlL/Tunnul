@@ -44,7 +44,6 @@ macro_rules! Send {
                         )*
                         let _ = $stream.write( &(to(&mut (packet_size)))[..]);
                         let _ = $stream.write( &[($packet_id as u8)] );
-                        let mut piece = 0;
                         $(
                                 let _ = $stream.write($data.convert());
                         )*
