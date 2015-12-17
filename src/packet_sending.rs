@@ -47,7 +47,6 @@ macro_rules! Send {
                         let mut piece = 0;
                         $(
                                 let _ = $stream.write($data.convert());
-                                println!("SENT");
                         )*
                         let _ =$stream.flush();
                 }
@@ -61,8 +60,6 @@ pub trait CanSend {
         fn get_size(&self) -> i32;
         fn convert(&mut self) -> &[u8];
 }
-
-
 
 impl<T: Any + 'static> CanSend for T {
         fn get_size(&self) -> i32 {
@@ -94,13 +91,11 @@ impl<T: Any + 'static> CanSend for T {
                         let vector = from.downcast_mut::<Vec<u8>>().unwrap();
                         &vector[..]
                 } else  {
-                        // This takes any staticly sized type, and reverses the order of bytes,
-                        // then returns it as &[u8]
-                        let result = from.downcast_mut::<T>().unwrap();
-                        let size = mem::size_of::<T>();
-                        let end = size -1; //last bytes, if we used size - i, off by 1 error
+                        //reverses the order of bytes,
                         unsafe {
-                        let raw: *mut u8 = mem::transmute(result);
+                                let raw:*mut u8 = mem::transmute(from.downcast_mut::<T>().unwrap() );
+                                let size = mem::size_of::<T>();
+                                let end = size -1;
                                 let t_as_u8_slice = from_raw_parts_mut(raw, size);
                                 for i in 0..(size/2) {
                                         t_as_u8_slice[i] |= t_as_u8_slice[end -i];

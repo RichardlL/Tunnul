@@ -171,13 +171,10 @@ use conversion;
 pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
         // We are handling everything manually here
         //SETTING: Version number (of minecraft packet protocol)
-        // version comes first in packet, but we dont need that if they just want to ping us,
-        // so well save it for later
         let vers = 47u8;
         let client_vers = first_packet.get_varint() as u8;
         //Minecraft gives the server its ip adress(prefixed with varint), not needed for now
         first_packet.index += first_packet.get_varint() as usize + 2;
-
         //check If they just want to ping (1 is ping , two is login)
         //protocol is just to send empty packet, so we dont need to read it :0
         if 1 == first_packet.get_varint() {
