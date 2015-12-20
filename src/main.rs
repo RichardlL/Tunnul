@@ -44,8 +44,6 @@ mod conversion;      // Conversion to and from minecraft's format.
 mod player;
 // Data Tramsfer
 use std::net::{TcpListener, TcpStream};
-use std::slice::Split;
-
 
 //Packet decoding and encoding, connection handling
 mod packet;
@@ -60,9 +58,6 @@ use std::fs;
 use std::thread;
 use std::sync::mpsc::channel;
 
-
-
-
 // Spawns Threads for connections, and hands off to new_connection
 //  to decide if its ping or to join game
 fn main() {
@@ -75,7 +70,7 @@ fn main() {
         println!("Bound Server Successfully, Open for Connections");
 
         // we'll have a seperate thread that handles all of the keep alives sends
-        // (server has to ping client ever 20 seconds,)
+        // (server has to ping client every 20 seconds,)
         // but well let each client's thread handle the response, so it will know when a client disconnects
         let (keep_alive_tx, keep_alive_rx) = channel();
         thread::spawn(move|| {packet::keep_alive_loop(keep_alive_rx)});

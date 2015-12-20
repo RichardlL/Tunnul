@@ -52,12 +52,6 @@ Player
 
 //game_type
 // 0..2 {survival, creative, adventure}
-#[macro_use]
-/*fn exact<T: Sized>(input: T) -> Box<u8> {
-        
-}*/
-use std::mem;
-use packet_sending;
 use packet_sending::CanSend;
 pub struct Location {
         pub x: f64,
@@ -87,7 +81,6 @@ impl Location {
                 (self.x - loc.x).powi(2) + (self.z - loc.z).powi(2)
         }
 }
-
 use std::io::Write;
 use std::net::TcpStream;
 
@@ -106,7 +99,6 @@ pub struct Player {
         stream: TcpStream
 }
 use std::hash::{Hash, SipHasher, Hasher};
-
 
 impl Player {
         // Logins in player if existing found, or creates new
@@ -134,7 +126,7 @@ impl Player {
                 }
         }
         fn confirm_login(&mut self) {
-                Send! {&mut self.stream, 0x2u8 , "de305d54-75b4-431b-adb2-eb6b9e546014".to_string(), self.name.clone() };
+                Send! {&mut self.stream, 0x2u8 , "de305d54-75b4-431b-adb2-eb6b9e546014".to_string() , self.name };
         }
         fn join_game(&mut self) {
                 Send! { &mut self.stream,
@@ -166,8 +158,6 @@ impl Player {
 
 use packet;
 use packet::{Packet};
-use conversion;
-
 pub fn player_login(mut first_packet: Packet, mut stream: TcpStream) {
         // We are handling everything manually here
         //SETTING: Version number (of minecraft packet protocol)
