@@ -67,8 +67,8 @@ impl<T: Any + 'static> CanSend for T {
         let from = self as &Any;
         if let Some(string) = from.downcast_ref::<String>() {
             string.len() + varint::to(&mut (string.len() as i32)).len()
-       // } else if let Some(variable) = from.downcast_ref::<Var32>() {
-       //     varint::to(&mut variable.clone()).len() as usize
+        } else if let Some(variable) = from.downcast_ref::<Var32>() {
+            varint::to(&mut variable.clone()).len() as usize
         } else if let Some(vector) = from.downcast_ref::<Vec<u8>>() {
             vector.len()
         } else {
@@ -81,8 +81,8 @@ impl<T: Any + 'static> CanSend for T {
             varint::write_to((string.len() as i32), packet);
             packet.extend_from_slice(string.as_bytes());
             return;
-        //} else if let Some(variable) = from.downcast_ref::<Var32>() {
-          //  varint::write_to(*variable, packet)
+        } else if let Some(variable) = from.downcast_ref::<Var32>() {
+            varint::write_to(*variable, packet)
         } if let Some(vector) = from.downcast_ref::<Vec<u8>>() {
             packet.extend(vector);
             return;
