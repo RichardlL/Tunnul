@@ -3,11 +3,12 @@
  - It only uses the standard library!
 
 ### Features!
- - **You can join!**
- - **rotate freely!**
- - **Watch a sunrise!**
- - **Have your name Printed to the console!**
- - **The Compiler only gives you 27 warnings when you build it!**
+ - 100% less segfaults than before!
+ - You can join!
+ - rotate freely!
+ - Watch a sunrise!
+ - Have your name Printed to the console!
+ - The Compiler only gives you 27 warnings when you build it!
 
 ### Milestones
  - Tunnul is able to communicate with Minecraft!
