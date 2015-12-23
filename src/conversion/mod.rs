@@ -1,13 +1,13 @@
-/* Tunnul - Minecraft server1
- * Copyright 2015 Richard Lettich
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- *
- * THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
- * IT IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
- */
+// Tunnul - Minecraft server1
+// Copyright 2015 Richard Lettich
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT.
+// IT IS NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
+//
 
 pub mod itt;
 pub mod varint;
