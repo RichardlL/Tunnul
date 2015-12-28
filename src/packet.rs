@@ -1,35 +1,32 @@
-/*
-Tunnul
-Copyright (c) 2015, Richard Lettich
-All rights reserved.
+// Tunnul
+// Copyright (c) 2015, Richard Lettich
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+// derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// -------------------------------------------------------------------------
+// THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
+// NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. The name of the author may not be used to endorse or promote products
-   derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
---------------------------------------------------------------------------
-
-THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
-NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
-*/
 
 // Note: All packets sent after login will be in player.rs
 
@@ -49,22 +46,27 @@ use std::time::Duration;
 use std::net::TcpStream;
 use conversion::itt;
 use std::io::Read;
-use std::{str, string};
+use std::str;
 use std::mem;
-
+use std::slice::from_raw_parts_mut;
 impl Packet {
     // Takes a tcp stream and pulls a packet from it
     // MAJOR FIX : no guarantee of full packet
     // MAJOR FIX: prevent over allocation
     pub fn new(mut stream: &mut TcpStream) -> Result<Packet, &'static str> {
-        stream.set_read_timeout(Some(Duration::from_secs(20)));
+        let _ = stream.set_read_timeout(Some(Duration::from_secs(20)));
+        let data_l =  itt::read(stream) - 1;
+        if data_l > 1024 || data_l < 0 {
+            return Err("");
+        }
         let mut packet = Packet {
             id: 0,
-            data: vec![0; itt::read(stream) as usize - 1],
+            data: vec![0; data_l as usize],
             index: 0,
         };
-        let _ =stream.read_exact(&mut [packet.id]);
+        packet.id = itt::read(stream) as u8;
         let _ = stream.read_exact(&mut packet.data);
+       // println!("Packet id: {}", packet.id);
         Ok(packet)
     }
     // Gets varint from current index position and updates index
@@ -97,14 +99,35 @@ impl Packet {
         Ok(try!(self.get_str()).to_owned())
     }
     // Gets Type T and updates buffer, where T is Statically sized
-    pub fn get<T>(&mut self) -> T {
+    pub fn get<T: Clone>(&mut self) -> T {
         let start = self.index;
         self.index += mem::size_of::<T>();
-        unsafe { mem::transmute_copy(&[start, self.index].reverse()) }
+        unsafe {
+            let result:T = mem::uninitialized();
+            let r_slice = from_raw_parts_mut(mem::transmute::<_,*mut u8>(&result), mem::size_of::<T>());
+            for (i, byte) in self.data[start..self.index].iter().rev().enumerate() {
+                r_slice[i] = *byte;
+            }
+            result
+        }
     }
 }
-
-
+use player::ReceiverData;
+pub fn form_packet(mut stream: TcpStream, tx: Sender<ReceiverData>)  {
+    loop {
+        match Packet::new(&mut stream) {
+            Ok(p) => {
+                if tx.send(ReceiverData::Packet(p)).is_err() {
+                     return; 
+                }
+            },
+            Err(e) => {
+                let _ = tx.send(ReceiverData::Err);
+                return;
+            },
+        }
+    }
+}
 // Checks if client wants the server's status or to join
 // player_connect goes to player/mod.rs
 
@@ -114,14 +137,14 @@ impl Packet {
 use std::thread;
 use player;
 use player_loop::player_loop;
-pub fn new_connection(stream: Box<TcpStream>) {
+pub fn new_connection(stream: Box<TcpStream>, tx: Sender<Sender<ReceiverData>>) {
     let mut stream = stream;
     let _ = stream.set_read_timeout(Some(Duration::new(20, 0)));
     let mut new_player_packet = Packet::new(&mut stream).unwrap();
     match new_player_packet {
         // Packet { id: 0 , data: d, index:_} if d.is_empty() => {},
         Packet { id:0, ..} => (),
-        Packet{..} => panic!("Malformed login packet"),
+        Packet{..} => { println!("Malformed login packet"); return},
     };
     // We are handling everything manually here
     // SETTING: Version number (of minecraft packet protocol)
@@ -133,17 +156,18 @@ pub fn new_connection(stream: Box<TcpStream>) {
     // protocol is just to send empty packet, so we dont need to read it :0
     if 1 == new_player_packet.get_varint() {
         let _ = Packet::new(&mut stream);
-        send_status(&mut stream);
+        //send_status(&mut stream);
     } else if vers != client_vers {
         wrong_version(&mut stream, client_vers as u8, vers as u8);
     } else {
-        // In player_loop.rs
-        player_loop(stream);
+        let player = player::Player::from_stream(stream);
+        tx.send(player.tx.clone());
+        player_loop(player);
     }
 }
-pub fn send_status(stream: &mut TcpStream) {
-    unimplemented!();
-}
+//pub fn send_status(stream: &mut TcpStream) {
+ //   unimplemented!();
+//}
 use std::io::Write;
 pub fn wrong_version(mut stream: &mut TcpStream, client: u8, server: u8) {
     let mut temp = format!("{{\"text\": \"Version of Minecraft Not Compatible, \n Your Protocol \
@@ -158,26 +182,20 @@ pub fn wrong_version(mut stream: &mut TcpStream, client: u8, server: u8) {
 
 // checks for new players
 // If write fails (stream closed), it stops sending keep alive
-use std::sync::mpsc;
-pub fn keep_alive_loop(rx: mpsc::Receiver<TcpStream>) {
-    let mut connections: Vec<TcpStream> = Vec::new();
+use std::sync::mpsc::{Sender, Receiver};
+pub fn keep_alive_loop(rx: Receiver<Sender<ReceiverData>>) {
+    let mut connections: Vec<Sender<ReceiverData>> = Vec::new();
     loop {
-        match rx.try_recv() {
-            Ok(stream) => connections.push(stream),
-            Err(_) => (),
+        if let Ok(keep_alive_tx) = rx.try_recv() {
+            connections.push(keep_alive_tx);
         }
-        let mut length = connections.len();
-        let mut i: usize = 0;
-        while i < length {
-            // Having it be random is useless
-            if connections[i].write(&[0x2u8, 0x0u8, 0x0u8]).is_err() {
-                connections.swap_remove(i);
-                length -= 1;
-                println!("Client Disconnected");
-                continue;
+        let mut p = connections.len();
+        while p != 0 {
+            p -= 1;
+            if connections[p].send(ReceiverData::KeepAlive).is_err() {
+                connections.swap_remove(p);
             }
-            i += 1;
         }
-        thread::sleep(Duration::new(5, 0));
+        thread::sleep(Duration::from_secs(5));
     }
 }

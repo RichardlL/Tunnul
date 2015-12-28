@@ -1,50 +1,37 @@
-/*
-Tunnul
-Copyright (c) 2015, Richard Lettich
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. The name of the author may not be used to endorse or promote products
-   derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
---------------------------------------------------------------------------
-
-THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
-NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
-*/
+// Tunnul
+// Copyright (c) 2015, Richard Lettich
+// All rights reserved.
 //
-// Do to the use of generics and macros, I feel the need to explain how this works,
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+// derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// --------------------------------------------------------------------------
+// THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
+// NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
+
+// Do to the use of generics (soon, rust needs some features, see below)
+// and macros, I feel the need to explain how this works,
 // as I probably will wonder what this even does in a week.
 //
-// &  Send! Macro
-// -  takes A TcpStream, Packet ID, and 0 or more pieces of Data to send to the client
-// -  Finds lenth using .size() method for each type, as packets are formatted as
-// - Lenth of Packet_ID + Data
-// - Packet id
-// - Data
-// - Sends Packet Size
-// - Sends Packet ID
-// - Sends Data
-// - This seems like a lot of bloat, but most of it will be compiled out (hopefully!) :)
-//
+
 // & .convert() method
 // -- Converts Data as neccesary, (little to big edian),
 // string types or does nothing for existing byte arrays
@@ -55,11 +42,14 @@ NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
 // This can be done in less lines with downcast_ref/mut(), but this way is done at compile time
 pub type Var32 = i32;
 #[macro_use]
+/// -  Takes A TcpStream, Packet ID, and 0 or more pieces of Data to send to the client
+/// -  Finds lenth using .size() method for each type, then formats packet, allocating a large Vec first
 macro_rules! Send {
     { $stream:expr, $packet_id:expr, $( $data:expr ),* } => { {
             use packet_sending::CanSend;
             use std::io::Write;
             use conversion::varint;
+            use std::net::TcpStream;
             let mut packet_size = 1; // Packet id is One byte
             $(
                 packet_size += ($data).get_size();
@@ -70,9 +60,12 @@ macro_rules! Send {
             $(
                 $data.convert_into(&mut packet);
             )*
-            let _ = (&mut $stream).write(&packet[..]);
+            let _ = TcpStream::write(&mut $stream, &packet[..]);
         } };
 }
+/// Crude Generic reimplementation to workout lack of Specialization, see
+/// https://github.com/rust-lang/rfcs/issues/1053
+/// Use Implsend!(Type, sizeoftype);
 macro_rules! ImplSend {
     ( $t:ty, $size:expr ) => {
         impl CanSend for $t {
@@ -89,6 +82,7 @@ use std::mem;
 use conversion::varint;
 use std::any::Any;
 use std::slice::from_raw_parts_mut;
+/// Trait of types that can be sent
 pub trait CanSend {
     fn get_size(&self) -> usize;
     fn convert_into(&mut self, mut packet: &mut Vec<u8>);

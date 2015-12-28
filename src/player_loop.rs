@@ -1,98 +1,157 @@
-/*
-Tunnul
-Copyright (c) 2015, Richard Lettich
-All rights reserved.
+// Tunnul
+// Copyright (c) 2015, Richard Lettich
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+// derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.        
+// --------------------------------------------------------------------------
+// THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
+// NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. The name of the author may not be used to endorse or promote products
-   derived from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
---------------------------------------------------------------------------
-
-THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
-NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
-*/
-
-// Array of packet handler, instead of doing a huge match
-// We just take the packet ID, packet_handler[packet.id]
-// (packet id 0 is position 0),
-/*static packet_handler = [
-        recv_keep_alive(),
-        chat_message(),
-        use_entity(),
-        is_flying(),
-        position_update(),
-        look_update(),
-        position_and_look_update(),
-        player_digging(),
-        block_placement(),
-        held_item_update(),
-        action(),
-        vehichle_steer(),
-        close_window(),
-        click_inventory_slot(),
-        confirm_transaction(),
-        creative_inventory(),
-        enchant_item(),
-        sign_set(),
-        player_abilities(),
-        tab_complete(),
-        client_settings(),
-        spawn_request(),
-        plugin_message(),
-        spectate(),
-        resource_pack_status(),
-        ];
-*/
+// This file contains the player loop and all functions for handling received packets
 use player;
 use packet;
 use std::net::TcpStream;
-pub fn player_loop(mut stream:  Box<TcpStream>) {
-    let mut player = player::Player::from_stream(stream);
+use std::time::Duration;
+use player::ReceiverData;
+use std::io::Write;
 
+// Easier to optimize than more intuitive solutions
+fn packet_handler(player: &mut Player, pack: &mut Packet) -> Option<&'static str> {
+    match pack.id {
+        0 => recv_keep_alive(),
+        1 => chat_message(player, pack),
+        2 => use_entity(player, pack),
+        3 => is_flying(),
+        4 => position_update(player, pack),
+       // 5 => look_update(player, pack),
+        //6 => position_and_look_update(player, pack),
+       // 7 => player_digging(player, pack),
+       // 8 => block_placement(player, pack),
+        //9 => held_item_update(player, pack),
+        //10 => action(player, pack),
+        //11 => vehichle_steer(player, pack),
+        //12 => close_window(player, pack),
+        //13 => click_inventory_slot(player, pack),
+        //14 => confirm_transaction(player, pack),
+        //15 => creative_inventory(player, pack),
+        //16 => enchant_item(player, pack),
+        //17 => sign_set(player, pack),
+        //18 => player_abilities(player, pack),
+        //19 => tab_complete(player, pack),
+        //20 => client_settings(player, pack),
+        //21 => spawn_request(player, pack),
+        //22 => plugin_message(player, pack),
+        //23 => spectate(player, pack),
+        //24 => resource_pack_status(player, pack),
+        _ => None, //panic!("invalid packet id"),
+    }
+}
+
+pub fn player_loop(mut player: Player) {
     player.confirm_login();
     player.join_game();
     player.send_spawn();
     player.send_location();
-    loop {}
-}
-   /* loop {
-        let packet = packet::Packet::new(&mut stream);
-        match packet.id {
-            0..packet_handler.len() => (),
-            _ => player.kick_player("Invalid Packet ID,  Hacking?"),
-        }
-        match player.packet_handler[packet.id](&packet) {
-            Ok => (),
-            Err(e) => { player.kick_player(e); return; },
+    loop {
+        println!("stuff");
+        // Large match Easier to optimize than more intuitive solutions
+        match player.rx.recv().unwrap() {
+            ReceiverData::Packet(mut pack)  => {
+                if player.health > 0 || pack.id == 0x16 {
+                    match packet_handler(&mut player, &mut pack) {
+                        Some(e) => (),//kick_player(e),
+                        _ => (),
+                    }
+                }
+            },
+            ReceiverData::FormedPacket(v) => {
+                match player.stream.write(&v) {
+                    Ok(_) => (), 
+                    Err(_) => println!("{} has disconnected", player.name),
+                }
+            },
+            ReceiverData::KeepAlive => { player.stream.write(&[0x2u8, 0x0u8, 0x0u8]); () },
+            ReceiverData::Err => return,
         }
     }
 }
 
-impl Player {
-    recv_keep_alive(&packet) -> Result {
-        Ok
-    }
-    fn chat_message(&packet) {
-        let message = try!(inputpacket.get_string());
-    }
-}*/
+use player::Location;
+use to_client;
+use packet::Packet;
+use player::Player;
 
+    fn recv_keep_alive() -> Option<&'static str> {
+        None
+    }
+    fn chat_message(player: &Player, packet: &mut Packet) -> Option<&'static str> {
+       // unimplemented!();
+       // let message = packet.get_string().unwrap();
+       None
+    }
+    fn use_entity(player: &mut Player, packet: &mut Packet) -> Option<&'static str> {
+        let target_id = packet.get_varint();
+        let interact_type = packet.get::<u8>();
+        if interact_type == 2 {
+            let interact_location = Location { 
+                x: packet.get::<f32>() as f64,
+                y: packet.get::<f32>() as f64,
+                z: packet.get::<f32>() as f64
+            };
+            if player.location.distance(&interact_location) > 25.0 {
+                Some("overexteding reach")
+            } else {
+                //Fix me
+                //unimplemented!();
+                None
+            }
+        } else {
+            None
+        }
+    }
+    fn is_flying() -> Option<&'static str> {
+        None
+    }
+    fn position_update(player: &mut Player, packet: &mut Packet) -> Option<&'static str> {
+        //Fixe me
+        
+      //  println!("Position update X: {}, Y: {}, Z: {}", player.location.x, player.location.y, player.location.z);
+        let new_pos = Location{ x: packet.get::<f64>(), y: packet.get::<f64>(), z: packet.get::<f64>() };
+        println!("new {} {} {}", new_pos.x, new_pos.y, new_pos.z);
+        let on_ground = packet.get::<bool>();
+        if player.location.distance(&new_pos) > 100.0 {
+            return Some("moving to fast");
+        } else {
+            //Fix me, Check for closest  y block below to prevent fall damage avoiding
+            let fall_dist = player.last_on_ground.y - new_pos.y - 3.0;
+            if fall_dist > 0.0 && on_ground  {
+                player.health -= fall_dist as i16;
+                player.update_health();
+               // player.last_on_ground = new_pos;
+            }
+        }
+        player.location = new_pos;
+        None
+       
+    }
