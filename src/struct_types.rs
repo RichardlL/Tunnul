@@ -27,40 +27,49 @@
 // THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
 // NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
 
+pub struct Location {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
 
-// Calulates size  of varint what how to decode
-// transfomed input flips negatives, which are then fliped back, to use less data
-// the u8 depends on if it was flipped at first
-fn var_int_flip(src: i32) -> (i32, u8) {
-    match (src & (0x1 << 31i32)) as u32 {
-        0x80000000u32 => ((src ^ ((0x1i32 << 31) >> 31), 0xFFu8)),
-        _ => (src, 0x80u8),
+impl Location {
+    pub fn new() -> Location {
+        Location {
+            x: 15.0,
+            y: 60.0,
+            z: 88.0,
+        }
     }
-
-}
-// bytes is number of bytes it uses
-pub fn var_int_size(transformed: i32) -> usize {
-    (((((32 - transformed.leading_zeros()) as usize) * 9 + 7) / 8) + 7) / 8
-}
-
-pub fn to(src: i32) -> Vec<u8> {
-    let (transform, y) = var_int_flip(src);
-    let bytes = var_int_size(transform);
-    println!("bytes {}", bytes);
-    let mut result = (0..bytes)
-                         .map(|i| y ^ ((transform >> (7 * i)) as u8) & 0x7F)
-                         .rev()
-                         .collect::<Vec<u8>>();
-    result[bytes - 1] ^= 0x80u8;
-    result
-}
-pub fn write_to(src: i32, mut vector: &mut Vec<u8>) {
-    let (transform, y) = var_int_flip(src);
-    let start = vector.len();
-    let end = start + var_int_size(transform);
-    unsafe { vector.set_len(end) };
-    for (i, val) in (start..end).enumerate() {
-        vector[val] = y ^ (((transform >> (7 * i)) as u8) & 0x7F);
+    pub fn form_postition(&self) -> u64 {
+        (((self.x as u64) & 0x3FFFFFFu64) << 38) |
+        ((self.z as u64) & 0x3FFFFFFu64) |
+        (((self.y as u64) & 0xFFFu64) << 26)
     }
-    vector[end - 1] ^= 0x80u8;
+    // Note - the actual distance is the square root of this, this is simply for hacking, etc
+    pub fn distance(&self, loc: &Location) -> f64 {
+        (self.x - loc.x).powi(2) + (self.z - loc.z).powi(2) + (self.z - loc.z).powi(2)
+    }
+}
+use packet::Packet;
+impl Packet {
+    // NOTE: minecraft protocol is wack.
+    // Some use f32, most use f64
+    pub fn get_location(&mut self) -> Location {
+        Location { 
+            x: self.get::<f64>(),
+            y: self.get::<f64>(),
+            z: self.get::<f64>(),
+        } 
+    }
+}
+use std::clone::Clone;
+impl Clone for Location {
+    fn clone(&self) -> Location {
+        Location {
+            x: self.x,
+            y: self.y,
+            z: self.z,
+        }
+    }
 }

@@ -31,24 +31,29 @@
 #![feature(ip_addr)]
 #![feature(slice_patterns)]
 #[macro_use]
+
+// Conversion to minecraft types and sending them
 mod packet_sending;
 
-mod conversion;      // Conversion to and from minecraft's format.
-                     // Nothing too interesting here, besides the
-                     // algorithms, which are probably bad examples;
-                     // anything that uses this will have to use:
-                     // conversion:: directly
-                     // or itt:: (iterators conversion)
+// Conversion from minecraft types
+mod primitive;
 
+//
+mod new_connection;
 
 // Player loop, packet handling, and player data, player actions
 mod player;
 mod player_loop;
+
+// location type
+mod struct_types;
+
 // Data Tramsfer
 use std::net::{TcpListener, TcpStream};
 
 // Packet decoding and encoding, connection handling
 mod packet;
+
 // World loading
 mod world;
 
@@ -63,6 +68,8 @@ use std::fs;
 use std::thread;
 use std::sync::mpsc::channel;
 
+// Keep Alive loop
+mod keep_alive;
 fn main() {
     println!("Starting Tunul  ");
     let socket = match TcpListener::bind("127.0.0.1:25565") {
@@ -76,11 +83,11 @@ fn main() {
     // but well let each client's thread handle the response,
     // so it will know when a client disconnects
     let (keep_alive_tx, keep_alive_rx) = channel();
-    thread::spawn(move || packet::keep_alive_loop(keep_alive_rx));
+    thread::spawn(move || keep_alive::keep_alive_loop(keep_alive_rx));
     for stream in socket.incoming() {
         let keep_alive_tx_clone = keep_alive_tx.clone();
         let stream = Box::new(stream.unwrap());
-        thread::spawn(move || packet::new_connection(stream, keep_alive_tx_clone));
+        thread::spawn(move || new_connection::new_connection(stream, keep_alive_tx_clone));
         
     }
 }

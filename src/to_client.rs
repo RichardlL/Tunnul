@@ -27,11 +27,31 @@
 // THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
 // NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
 
+// This module is most of thepackets sent to player during normal loop.
+// They dont do computation, just send data.
+
 use player::Player;
-use packet_sending;
 
 impl Player {
     pub fn update_health(&mut self) {
         Send!{ &mut self.stream, 0x6, self.health as u8, self.food, self.food_saturation };
+    }
+    pub fn health(&mut self, addition: i16) {
+        self.health += addition;
+        self.update_health();
+    }
+    pub fn send_spawn(&mut self) {
+        Send!{ &mut self.stream, 0x5u8, self.respawn.form_postition() };
+    }
+    pub fn send_location(&mut self) {
+        Send!{ &mut self.stream,
+                        0x8u8,
+                        self.location.x,
+                        self.location.y,
+                        self.location.z,
+                        self.pitch,
+                        self.yaw,
+                        0x0u8
+                };
     }
 }

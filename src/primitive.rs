@@ -23,14 +23,58 @@
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 // THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-// --------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 // THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
 // NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
 
+// Module Disc:
+// Converts from minecraft protocol primitives, including varints
+// Most are packet.get::<Type>();
+// To conversion is in packet_sending
 
+use packet::Packet;
+use std::mem;
+use std::slice::from_raw_parts_mut;
+use std::iter::FromIterator;
+use std::mem::size_of;
+
+impl Packet {
+    pub fn get_varint(&mut self) -> i64 {
+        let mut result: i64 = 0;
+        let mut size: usize = 0;
+        for (i, byte) in self.data.by_ref().enumerate() {
+            result |= ((byte & 0x7Fu8) as i64) >> (7 * i);
+            if byte & 0x80u8 == 0 {
+                size = i;
+                break;
+            }
+        }
+        result | result >> (57 - (7 * size))
+    }
+    pub fn get_string(&mut self) -> String {
+        let len = self.get_varint() as usize;
+        String::from_iter(
+            self.data
+            	.by_ref()
+            	.take(len)
+            	.map(|i| i as char)
+        )
+    }
+    pub fn get<T: Clone>(&mut self) -> T {
+        unsafe {
+            let result:T = mem::uninitialized();
+            let r_slice = from_raw_parts_mut(mem::transmute::<_,*mut u8>(&result), size_of::<T>());
+            for byte in r_slice.iter_mut().rev() {
+                *byte = self.data.next().unwrap();
+            }
+            result
+        }
+    }
+}
+// I should problbly find a way to work around this
 use std::net::TcpStream;
 use std::io::Read;
-pub fn read(src_array: &mut TcpStream) -> i32 {
+pub fn read_varint(src_array: &mut TcpStream) -> i32 {
     let mut result: i32 = 0;
     let mut vi_size: usize = 0;
     for byte in src_array.bytes() {
@@ -41,7 +85,5 @@ pub fn read(src_array: &mut TcpStream) -> i32 {
             break;
         }
     }
-    result |= ((result & 0x40) << 25) >> (31 - (7 * vi_size));
-    println!("vi {}", vi_size);
-    result
+    result | ((result & 0x40) << 25) >> (31 - (7 * vi_size))
 }

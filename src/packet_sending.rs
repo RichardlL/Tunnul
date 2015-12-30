@@ -46,15 +46,15 @@ pub type Var32 = i32;
 /// -  Finds lenth using .size() method for each type, then formats packet, allocating a large Vec first
 macro_rules! Send {
     { $stream:expr, $packet_id:expr, $( $data:expr ),* } => { {
-            use packet_sending::CanSend;
+            use packet_sending::{write_varint, CanSend, var_int_size};
             use std::io::Write;
-            use conversion::varint;
             use std::net::TcpStream;
             let mut packet_size = 1; // Packet id is One byte
             $(
                 packet_size += ($data).get_size();
             )*
-            let mut packet = varint::to(packet_size as i32);
+            let mut packet: Vec<u8> = Vec::new();
+            write_varint(packet_size as i32, &mut packet);
             packet.reserve(packet_size);
             packet.push($packet_id as u8);
             $(
@@ -72,27 +72,26 @@ macro_rules! ImplSend {
             fn get_size(&self) -> usize {
                 $size
             }
-            fn convert_into(&mut self, mut packet: &mut Vec<u8>) {
+            fn convert_into(&self, mut packet: &mut Vec<u8>) {
                 reverse_and_write(self, $size, &mut packet);
             }
         }
     }
 }
 use std::mem;
-use conversion::varint;
 use std::any::Any;
-use std::slice::from_raw_parts_mut;
-/// Trait of types that can be sent
+use std::slice::from_raw_parts;
+/// Trait of Primitive types that can be sent
 pub trait CanSend {
     fn get_size(&self) -> usize;
-    fn convert_into(&mut self, mut packet: &mut Vec<u8>);
+    fn convert_into(&self, mut packet: &mut Vec<u8>);
 }
 impl CanSend for String {
     fn get_size(&self) -> usize {
-        self.len() + varint::var_int_size(self.len() as i32) as usize
+        self.len() + var_int_size(self.len() as i32) as usize
     }
-    fn convert_into(&mut self, mut packet: &mut Vec<u8>) {
-        varint::write_to((self.len() as i32), packet);
+    fn convert_into(&self, mut packet: &mut Vec<u8>) {
+        write_varint(self.len() as i32, packet);
         packet.extend_from_slice(self.as_bytes());
     }
 }
@@ -102,15 +101,15 @@ impl CanSend for i32 {
     fn get_size(&self) -> usize {
         let new = self as &Any;
         if new.is::<Var32>() {
-            varint::var_int_size(*self) as usize
+            var_int_size(*self) as usize
         } else {
             4
         }
     }
-    fn convert_into(&mut self, mut packet: &mut Vec<u8>) {
+    fn convert_into(&self, mut packet: &mut Vec<u8>) {
         let new = self as &Any;
         if new.is::<Var32>() {
-            varint::write_to(*self, packet)
+            write_varint(*self, packet)
         } else {
             reverse_and_write(self, 4, packet)
         }
@@ -120,16 +119,32 @@ impl CanSend for Vec<u8> {
     fn get_size(&self) -> usize {
         self.len()
     }
-    fn convert_into(&mut self, mut packet: &mut Vec<u8>) {
+    fn convert_into(&self, mut packet: &mut Vec<u8>) {
         packet.extend(&*self);
     }
 }
 fn reverse_and_write<T>(pointer: &T, size: usize, mut packet: &mut Vec<u8>) {
     unsafe {
-        let raw: *mut u8 = mem::transmute(pointer);
-        let t_as_u8_slice = from_raw_parts_mut(raw, size);
+        let raw: *const u8 = mem::transmute(pointer);
+        let t_as_u8_slice = from_raw_parts(raw, size);
         packet.extend(t_as_u8_slice.iter().rev());
     }
+}
+pub fn write_varint(src: i32, mut vector: &mut Vec<u8>) {
+    let (transform, xor) = match src.is_positive() {
+        true => (src, 0x80u8),
+        false => ((src ^ 0x7FFFFFFF, 0xFFu8)),
+    };
+    vector.extend(
+        (0..var_int_size(transform))
+        .rev()
+        .map(|i| xor ^ (((transform >> (7 * i)) as u8) & 0x7F))
+    );
+    let tmp = vector.len() -1;
+    vector[tmp] ^= 0x80u8;
+}
+pub fn var_int_size(transformed: i32) -> usize {
+    (((32 - transformed.leading_zeros() as usize) * 9) + 63) / 64
 }
 ImplSend!(i64, 8);
 ImplSend!(i16, 2);

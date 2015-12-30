@@ -64,62 +64,34 @@
 
 // game_type
 // 0..2 {survival, creative, adventure}
-use packet_sending::CanSend;
-pub struct Location {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-impl Location {
-    fn new() -> Location {
-        Location {
-            x: 15.0,
-            y: 60.0,
-            z: 88.0,
-        }
-    }
-    fn form_postition(&self) -> u64 {
-        // position is same a f64, but tells send macro not to switch bytes
-        (((self.x as u64) & 0x3FFFFFFu64) << 38) | ((self.z as u64) & 0x3FFFFFFu64) |
-        (((self.y as u64) & 0xFFFu64) << 26)
-    }
-    // Note - the actual distance is the square root of this, this is simply for hacking, etc
-    pub fn distance(&self, loc: &Location) -> f64 {
-        (self.x - loc.x).powi(2) + (self.z - loc.z).powi(2) + (self.z - loc.z).powi(2)
-    }
-}
 use std::sync::mpsc::{Sender, Receiver, channel};
 /// Either a Packet from Client, or update from another thread (ie entity moved)
 use packet::Packet;
-pub enum ReceiverData {
-    Packet(Packet),
-    Err,  // I/O ERR
-    FormedPacket(Vec<u8>),  // Packet already formed
-    KeepAlive,
-    // Fixme, Thread to thread transmission
-}
+use struct_types::Location;
+use player_loop::ReceiverData;
+
 use std::io::Write;
 use std::net::TcpStream;
 use to_client;
 pub struct Player {
-    eid: u32,
+    pub eid: u32,
     pub name: String,
     pub location: Location,
     pub pitch: f32,
     pub yaw: f32,
     // pub interation: (Option<Location>, PreciseTime),
-    xmin: i32,
-    xmax: i32,
-    zmin: i32,
-    zmax: i32, 
+    pub xmin: i32,
+    pub xmax: i32,
+    pub zmin: i32,
+    pub zmax: i32, 
     pub last_on_ground: Location, //Includes last "on ground, to calculate fall damage
     pub health: i16,
     pub food: i8,
     pub food_saturation: f32,
-    world_type: i8,
-    game_mode: u8,
-    respawn: Location,
-    reputation: u8,
+    pub world_type: i8,
+    pub game_mode: u8,
+    pub respawn: Location,
+    pub reputation: u8,
     pub tx: Sender<ReceiverData>,
     pub rx: Receiver<ReceiverData>,
     pub stream: Box<TcpStream>,
@@ -127,12 +99,19 @@ pub struct Player {
 use std::hash::{Hash, SipHasher, Hasher};
 use std::thread;
 use packet;
+
 impl Player {
     // Logins in player if existing found, or creates new
     // Feature: record and check
-    pub fn from_stream(mut stream: Box<TcpStream>) -> Player {
-        let mut login_packet = Packet::new(&mut stream);
-        let player_name = login_packet.unwrap().get_string().unwrap();
+    pub fn from_stream(mut stream: Box<TcpStream>) -> Option<Player> {
+        let mut login_packet = match Packet::new(&mut stream) {
+            Ok(p) => p,
+            _ => {
+                println!("Error Logging player In");
+                return None;
+            },
+        };
+        let player_name = login_packet.get_string();
         let mut hash_gen = SipHasher::new();
         stream.peer_addr().unwrap().ip().hash(&mut hash_gen);
         hash_gen.write(player_name.as_bytes());
@@ -143,13 +122,12 @@ impl Player {
         // Something needs to be updated, such as health.
         let (to_player,  data_rx) = channel();
         let to_player_clone = to_player.clone();
-        let stream_clone = stream.try_clone().unwrap();
-        // Forms packets and passes to player thread
-        thread::spawn(move || packet::form_packet(stream_clone, to_player_clone));
+        let stream_clone: Box<TcpStream> = Box::new(stream.try_clone().unwrap());
         
-        Player {
+        thread::spawn(move || packet::form_packet(stream_clone, to_player_clone));
+        Some(Player {
             eid: ((hash & 0xFFFFFFFF) as u32),
-            name: player_name,
+            name: player_name.to_string(),
             xmin: 0,
             xmax: 0,
             zmin: 0,
@@ -157,7 +135,7 @@ impl Player {
             location: Location::new(),
             yaw: 0.0,
             pitch: 0.0,
-            respawn: Location::new(), // user server spawn
+            respawn: Location::new(),
             last_on_ground: Location::new(),
             health: 20,
             food: 20,
@@ -168,43 +146,6 @@ impl Player {
             tx: to_player.clone(),
             rx: data_rx,
             stream: stream
-        }
-    }
-    pub fn health(&mut self, addition: i16) {
-        self.health += addition;
-        self.update_health();
-    }
-    pub fn confirm_login(&mut self) {
-        Send!{&mut self.stream,
-            0x2u8 ,
-            "de305d54-75b4-431b-adb2-eb6b9e546014".to_string(),
-            self.name
-        };
-    }
-    pub fn join_game(&mut self) {
-        Send!{ &mut self.stream,
-                        0x1,
-                        self.eid.clone(),
-                        self.game_mode.clone(),
-                        self.world_type.clone(),
-                        0x0u8,  // Fixme, Difficulty
-                        0b11111111u8, //max players
-                        "default".to_string(),
-                        0x0u8
-                }
-    }
-    pub fn send_spawn(&mut self) {
-        Send!{ &mut self.stream, 0x5u8, self.respawn.form_postition() };
-    }
-    pub fn send_location(&mut self) {
-        Send!{ &mut self.stream,
-                        0x8u8,
-                        self.location.x,
-                        self.location.y,
-                        self.location.z,
-                        self.pitch,
-                        self.yaw,
-                        0x0u8
-                };
+        })
     }
 }
