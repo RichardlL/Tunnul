@@ -22,7 +22,7 @@
 // DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.        
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // --------------------------------------------------------------------------
 // THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
 // NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
@@ -38,7 +38,6 @@ use std::io::Write;
 // Easier to optimize than more intuitive solutions
 fn packet_handler(player: &mut Player, pack: &mut Packet) -> Option<&'static str> {
     match pack.id {
-        0 => None,
         1 => chat_message(player, pack),
         2 => use_entity(player, pack),
         3 => is_flying(),
@@ -96,9 +95,7 @@ use struct_types::Location;
 use to_client;
 use packet::Packet;
 use player::Player;
-fn recv_keep_alive() -> Option<&'static str> {
-    None
-}
+
 fn chat_message(player: &Player, packet: &mut Packet) -> Option<&'static str> {
     unimplemented!();
 }
@@ -122,19 +119,18 @@ fn is_flying() -> Option<&'static str> {
 fn position_update(player: &mut Player, packet: &mut Packet) -> Option<&'static str> {
     //Fixe me
     let new_pos = packet.get_location();
-    println!("{0} XYZ {1:.2} {2:.2} {3:.2}",player.name, new_pos.x, new_pos.y, new_pos.z);
     let on_ground = packet.get::<bool>();
+    println!("NAME {} Loc {} {} {}", player.name, player.location.x, player.location.y, player.location.z);
     if player.location.distance(&new_pos) > 100.0 {
         return Some("moving to fast");
-    } else {
-        //Fix me, Check for closest  y block below to prevent fall damage avoiding
-        let fall_dist = player.last_on_ground.y - new_pos.y - 3.0;
-        if fall_dist > 0.0 && on_ground  {
-            player.health -= fall_dist as i16;
-            player.update_health();
-            player.last_on_ground = new_pos;
-        }
     }
-    //player.location = new_pos;
+    //Fix me, Check for closest  y block below to prevent fall damage avoiding
+    let fall_dist = player.last_on_ground.y - new_pos.y - 3.0;
+    if fall_dist > 0.0 && on_ground  {
+        player.health -= fall_dist as i16;
+        player.update_health();
+        player.last_on_ground = new_pos.clone();
+    }
+    player.location = new_pos;
     None
 }

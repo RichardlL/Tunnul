@@ -33,16 +33,42 @@
 // To conversion is in packet_sending
 
 use packet::Packet;
-use std::mem;
 use std::slice::from_raw_parts_mut;
-use std::iter::FromIterator;
-use std::mem::size_of;
+use std::mem::{ size_of, zeroed, transmute };
 
 impl Packet {
     pub fn get_varint(&mut self) -> i64 {
-        let mut result: i64 = 0;
+        self.data.get_varint()
+    }
+    pub fn get_string(&mut self) -> String {
+        let len = self.get_varint() as usize;
+        String::from_utf8(
+            self.data
+            .by_ref()
+            .take(len)
+            .collect::<Vec<u8>>()
+        ).unwrap()
+    }
+    pub fn get<T>(&mut self) -> T {
+        unsafe {
+            let result:T = zeroed();
+            let r_slice = from_raw_parts_mut(transmute::<_,*mut u8>(&result), size_of::<T>());
+            for byte in r_slice.iter_mut().rev() {
+                *byte = self.data.next().unwrap();
+            }
+            result
+        }
+    }
+}
+
+pub trait VarInt { fn get_varint(&mut self) -> i64; }
+
+use std::iter::Iterator;
+impl<T: Iterator<Item = u8>> VarInt for T {
+    fn get_varint(&mut self) -> i64 {
+        let mut result = 0;
         let mut size: usize = 0;
-        for (i, byte) in self.data.by_ref().enumerate() {
+        for (i, byte) in self.enumerate() {
             result |= ((byte & 0x7Fu8) as i64) >> (7 * i);
             if byte & 0x80u8 == 0 {
                 size = i;
@@ -51,39 +77,4 @@ impl Packet {
         }
         result | result >> (57 - (7 * size))
     }
-    pub fn get_string(&mut self) -> String {
-        let len = self.get_varint() as usize;
-        String::from_iter(
-            self.data
-            	.by_ref()
-            	.take(len)
-            	.map(|i| i as char)
-        )
-    }
-    pub fn get<T: Clone>(&mut self) -> T {
-        unsafe {
-            let result:T = mem::uninitialized();
-            let r_slice = from_raw_parts_mut(mem::transmute::<_,*mut u8>(&result), size_of::<T>());
-            for byte in r_slice.iter_mut().rev() {
-                *byte = self.data.next().unwrap();
-            }
-            result
-        }
-    }
-}
-// I should problbly find a way to work around this
-use std::net::TcpStream;
-use std::io::Read;
-pub fn read_varint(src_array: &mut TcpStream) -> i32 {
-    let mut result: i32 = 0;
-    let mut vi_size: usize = 0;
-    for byte in src_array.bytes() {
-        let byte = byte.unwrap();
-        result |= ((byte & 0x7Fu8) as i32) << (7 * vi_size);
-        vi_size += 1;
-        if (byte & 0x80u8) == 0 {
-            break;
-        }
-    }
-    result | ((result & 0x40) << 25) >> (31 - (7 * vi_size))
 }

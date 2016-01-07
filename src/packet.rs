@@ -36,9 +36,10 @@
 use std::net::TcpStream;
 use std::io::Read;
 use std::vec::IntoIter;
-use primitive::read_varint;
+//use primitive::read_varint;
 use std::time::Duration;
-
+use primitive::VarInt;
+use std::mem;
 pub struct Packet {
     pub id: u8,
     pub data: IntoIter<u8>,
@@ -46,37 +47,44 @@ pub struct Packet {
 impl Packet {
     // Takes a tcp stream and pulls a packet from it
     // MAJOR FIX : no guarantee of full packet
-    // MAJOR FIX: prevent over allocation
-    #[inline(always)]
     pub fn new(mut stream: &mut TcpStream) -> Result<Packet, &'static str> {
-        let _ = stream.set_read_timeout(Some(Duration::from_secs(20)));
-        let data_l = read_varint(stream) - 1;
-        if data_l > 1024 || data_l < 0 {
-            return Err("Packet wrong size");
-        }
-        let packet_id = read_varint(stream) as u8;
-        let mut data = vec![0; data_l as usize];
-        match stream.read_exact(&mut data) {
-            Err(_) => Err("Error reading Packet"),
-            _ => Ok( Packet { id: packet_id, data: data.into_iter() } )
-        }
+        let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
+        
+        let mut data = match stream
+                .bytes()
+                .map(|i| i.unwrap())
+                .get_varint() as usize
+                {
+            len @ 1...1024 => vec![0; len],
+            _ => return Err("Packet Forming error: Packet wrong \
+                             size or stream Terminated"),
+        };
+         
+        let mut pack = match stream.read_exact(&mut data) {
+            Ok(_) => Packet {
+                id: unsafe { mem::uninitialized() },
+                data: data.into_iter()
+            },
+            Err(_) => return Err("Error reading Packet"),
+        };
+        pack.id = pack.get_varint() as u8;
+        Ok(pack)
     }
 }
 use std::sync::mpsc::Sender;
+use std::sync::mpsc::SendError;
 use player_loop::ReceiverData;
 
-pub fn form_packet(mut stream: Box<TcpStream>, tx: Sender<ReceiverData>)  {
+pub fn form_packet(
+    mut stream: Box<TcpStream>,
+    tx: Sender<ReceiverData>
+	) -> Result<(), SendError<ReceiverData>> {
     loop {
         match Packet::new(&mut stream) {
-            Ok(p) => {
-                if tx.send(ReceiverData::Packet(p)).is_err() {
-                     return; 
-                }
-            },
-            Err(e) => {
-                let _ = tx.send(ReceiverData::TcpErr);
-                return;
-            },
+            Ok(p) => try!(
+                tx.send(ReceiverData::Packet(p))
+            ),
+            Err(_) => return tx.send(ReceiverData::TcpErr),
         }
     }
 }

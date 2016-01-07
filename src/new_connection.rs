@@ -54,7 +54,7 @@ pub fn new_connection(mut stream: Box<TcpStream>, keep_alive_tx: Sender<Sender<R
                 Some(p) => p,
                 None => return,
             };
-            keep_alive_tx.send(player.tx.clone());
+            let _ = keep_alive_tx.send(player.tx.clone());
             
             player.confirm_login();
             player.join_game();
@@ -62,8 +62,8 @@ pub fn new_connection(mut stream: Box<TcpStream>, keep_alive_tx: Sender<Sender<R
             player.send_location();
             
             thread::spawn(move || player_loop(player));  // Spawning again to drop stack.
-        }, // Sendstatus
-        (_, 0) => wrong_version(&mut *stream, client_vers, PROTOCOL_VERSION),
+        }, // Send status
+        (_, 0) => wrong_version(&mut stream, client_vers, PROTOCOL_VERSION),
         _ => println!("Malformed login packet {}, {},",client_vers,is_ping),
     }
 }
@@ -71,22 +71,22 @@ pub fn new_connection(mut stream: Box<TcpStream>, keep_alive_tx: Sender<Sender<R
 impl Player {
     fn confirm_login(&mut self) {
         Send!{
-            &mut self.stream,
+            self.stream,
             0x2u8 ,
-            "de305d54-75b4-431b-adb2-eb6b9e546014".to_string(),
+            "de305d54-75b4-431b-adb2-eb6b9e546014",
             self.name
         };
     }
     fn join_game(&mut self) {
         Send!{ 
-            &mut self.stream,
+            self.stream,
             0x1,
             self.eid,
             self.game_mode,
             self.world_type,
             0x0u8,  // Fixme, Difficulty
             0b11111111u8, //max players
-            "default".to_string(),
+            "default", //worldtype
             0x0u8
         }
     }
@@ -95,12 +95,12 @@ impl Player {
 use std::io::Write;
 use std::net::TcpStream;
 fn wrong_version(mut stream: &mut TcpStream, client: u8, server: u8) {
-    let mut temp = format!("{{\"text\": \"Version of Minecraft Not Compatible, \n Your Protocol \
+    let temp = format!("{{\"text\": \"Version of Minecraft Not Compatible, \n Your Protocol \
                             Version is: {} \n Server Verrsion: {}}}",
                             client,
                            server);
     Send!{ 
-        &mut stream,
+        stream,
         0x0,
         temp
     };

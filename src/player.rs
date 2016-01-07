@@ -80,10 +80,7 @@ pub struct Player {
     pub pitch: f32,
     pub yaw: f32,
     // pub interation: (Option<Location>, PreciseTime),
-    pub xmin: i32,
-    pub xmax: i32,
-    pub zmin: i32,
-    pub zmax: i32, 
+    pub chunks: Vec<(i32, i32)>,
     pub last_on_ground: Location, //Includes last "on ground, to calculate fall damage
     pub health: i16,
     pub food: i8,
@@ -112,26 +109,23 @@ impl Player {
             },
         };
         let player_name = login_packet.get_string();
-        let mut hash_gen = SipHasher::new();
-        stream.peer_addr().unwrap().ip().hash(&mut hash_gen);
-        hash_gen.write(player_name.as_bytes());
-        let hash = hash_gen.finish();
-        
-        // Sends `RecieveverData`, can be either from tcp in, or other threads (e.g. player shot an arrow).
-        // We need to notify player thread, rather than just sending to their tcp_stream thread, incase
-        // Something needs to be updated, such as health.
+
+        let mut hash = SipHasher::new();
+        stream.peer_addr().unwrap().ip().hash(&mut hash);
+        hash.write(player_name.as_bytes());
+
+        // Sends `RecieveverData`, can be either from tcp in, or other threads
+        // We need to notify player thread, incase Something needs to be updated.
         let (to_player,  data_rx) = channel();
-        let to_player_clone = to_player.clone();
-        let stream_clone: Box<TcpStream> = Box::new(stream.try_clone().unwrap());
         
+        let to_player_clone = to_player.clone();
+        let stream_clone = Box::new(stream.try_clone().unwrap());
         thread::spawn(move || packet::form_packet(stream_clone, to_player_clone));
+
         Some(Player {
-            eid: ((hash & 0xFFFFFFFF) as u32),
-            name: player_name.to_string(),
-            xmin: 0,
-            xmax: 0,
-            zmin: 0,
-            zmax: 0,
+            eid: hash.finish() as u32,
+            name: player_name,
+            chunks: Vec::new(),
             location: Location::new(),
             yaw: 0.0,
             pitch: 0.0,
@@ -143,7 +137,7 @@ impl Player {
             world_type: 0,
             game_mode: 1,
             reputation: 0,
-            tx: to_player.clone(),
+            tx: to_player,
             rx: data_rx,
             stream: stream
         })

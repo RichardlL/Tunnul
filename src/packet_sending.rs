@@ -46,7 +46,7 @@ pub type Var32 = i32;
 /// -  Finds lenth using .size() method for each type, then formats packet, allocating a large Vec first
 macro_rules! Send {
     { $stream:expr, $packet_id:expr, $( $data:expr ),* } => { {
-            use packet_sending::{write_varint, CanSend, var_int_size};
+            use packet_sending::{write_varint, CanSend};
             use std::io::Write;
             use std::net::TcpStream;
             let mut packet_size = 1; // Packet id is One byte
@@ -86,13 +86,24 @@ pub trait CanSend {
     fn get_size(&self) -> usize;
     fn convert_into(&self, mut packet: &mut Vec<u8>);
 }
-impl CanSend for String {
+impl CanSend for str {
     fn get_size(&self) -> usize {
         self.len() + var_int_size(self.len() as i32) as usize
     }
     fn convert_into(&self, mut packet: &mut Vec<u8>) {
         write_varint(self.len() as i32, packet);
         packet.extend_from_slice(self.as_bytes());
+    }
+}
+use struct_types::Location;
+impl CanSend for Location {
+    fn get_size(&self) -> usize {
+        24
+    }
+    fn convert_into(&self,mut packet: &mut Vec<u8>) {
+        self.x.convert_into(packet);
+        self.y.convert_into(packet);
+        self.z.convert_into(packet);
     }
 }
 // We have to do this explicitly, as we check If its a varint
@@ -115,6 +126,7 @@ impl CanSend for i32 {
         }
     }
 }
+/*
 impl CanSend for Vec<u8> {
     fn get_size(&self) -> usize {
         self.len()
@@ -123,6 +135,7 @@ impl CanSend for Vec<u8> {
         packet.extend(&*self);
     }
 }
+*/
 fn reverse_and_write<T>(pointer: &T, size: usize, mut packet: &mut Vec<u8>) {
     unsafe {
         let raw: *const u8 = mem::transmute(pointer);

@@ -71,10 +71,13 @@ use std::sync::mpsc::channel;
 // Keep Alive loop
 mod keep_alive;
 fn main() {
-    println!("Starting Tunul  ");
+    println!("Starting Tunul");
     let socket = match TcpListener::bind("127.0.0.1:25565") {
         Ok(x) => x,
-        Err(_) => {println!("Error Binding, Do you have permission, or is another process running?"); return;},
+        Err(_) => {
+            println!("Error Binding, Do you have permission, or is another process running?");
+            return;
+        },
     };
     println!("Bound Server Successfully, Open for Connections");
 
