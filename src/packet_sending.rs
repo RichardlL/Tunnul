@@ -36,10 +36,6 @@
 // -- Converts Data as neccesary, (little to big edian),
 // string types or does nothing for existing byte arrays
 //
-// We have to implement for each type, Since lack of type specialization
-// See https://github.com/rust-lang/rfcs/issues/1053
-//
-// This can be done in less lines with downcast_ref/mut(), but this way is done at compile time
 pub type Var32 = i32;
 #[macro_use]
 /// -  Takes A TcpStream, Packet ID, and 0 or more pieces of Data to send to the client
@@ -126,16 +122,7 @@ impl CanSend for i32 {
         }
     }
 }
-/*
-impl CanSend for Vec<u8> {
-    fn get_size(&self) -> usize {
-        self.len()
-    }
-    fn convert_into(&self, mut packet: &mut Vec<u8>) {
-        packet.extend(&*self);
-    }
-}
-*/
+
 fn reverse_and_write<T>(pointer: &T, size: usize, mut packet: &mut Vec<u8>) {
     unsafe {
         let raw: *const u8 = mem::transmute(pointer);
@@ -156,9 +143,6 @@ pub fn write_varint(src: i32, mut vector: &mut Vec<u8>) {
     let tmp = vector.len() -1;
     vector[tmp] ^= 0x80u8;
 }
-pub fn var_int_size(transformed: i32) -> usize {
-    (((32 - transformed.leading_zeros() as usize) * 9) + 63) / 64
-}
 ImplSend!(i64, 8);
 ImplSend!(i16, 2);
 // Due to varint, i32 is implement seperatly
@@ -169,3 +153,12 @@ ImplSend!(u16, 2);
 ImplSend!(u8, 1);
 ImplSend!(f64, 8);
 ImplSend!(f32, 4);
+pub fn var_int_size(transformed: i32) -> usize {
+    match transformed {
+        0...127 => 1,
+        128...16384  => 2,
+        16385...2097152 => 3,
+        _ => 4,
+    }
+}
+

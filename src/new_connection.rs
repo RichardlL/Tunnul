@@ -49,6 +49,7 @@ pub fn new_connection(mut stream: Box<TcpStream>, keep_alive_tx: Sender<Sender<R
 
     match (client_vers, is_ping) {
         (_, 1) => (),
+        
         (PROTOCOL_VERSION, _) => {
             let mut player = match player::Player::from_stream(stream) {
                 Some(p) => p,
@@ -56,13 +57,14 @@ pub fn new_connection(mut stream: Box<TcpStream>, keep_alive_tx: Sender<Sender<R
             };
             let _ = keep_alive_tx.send(player.tx.clone());
             
-            player.confirm_login();
+            player.confirm_login(); 
             player.join_game();
             player.send_spawn();
             player.send_location();
             
             thread::spawn(move || player_loop(player));  // Spawning again to drop stack.
-        }, // Send status
+        },
+        
         (_, 0) => wrong_version(&mut stream, client_vers, PROTOCOL_VERSION),
         _ => println!("Malformed login packet {}, {},",client_vers,is_ping),
     }

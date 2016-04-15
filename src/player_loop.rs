@@ -29,11 +29,14 @@
 
 
 // This file contains the player loop and all functions for handling received packets
+extern crate mio;
 use player;
 use packet;
 use std::net::TcpStream;
 use std::time::Duration;
 use std::io::Write;
+use self::mio::*;
+
 
 // Easier to optimize than more intuitive solutions
 fn packet_handler(player: &mut Player, pack: &mut Packet) -> Option<&'static str> {
@@ -67,18 +70,49 @@ fn packet_handler(player: &mut Player, pack: &mut Packet) -> Option<&'static str
 }
 // Types of Data tx's send that can unblock player thread
 pub enum ReceiverData {
-    Packet(Packet),
+   // Packet(Packet),
     TcpErr, // Packet already formed
     KeepAlive,
     // Fixme, Thread to thread transmission
 }
+
+const PLAYER_STREAM: Token = Token(0);
+const RECIEVER: Token = Token(1);
+
+struct MyHandler(TcpStream);
+
+impl Handler for MyHandler {
+    type Timeout = ();
+    type Message = ();
+
+    fn ready(&mut self, event_loop: &mut EventLoop<MyHandler>, token: Token, _: EventSet) {
+        match token {
+            PLAYER_STREAM => {
+                println!("hi");
+            }
+            _ => panic!("unexpected token"),
+        }
+    }
+}
+
 pub fn player_loop(mut player: Player) {
     println!("{} has joined the game", player.name);
-    loop {
+    
+    let addr = player.stream.local_addr().unwrap();
+    let mut stream = mio::tcp::TcpStream::connect_stream(*player.stream, &addr).unwrap();
+    
+    let mut event_loop = EventLoop::<MyHandler>::new().unwrap();
+    
+    event_loop.register(&stream, PLAYER_STREAM, EventSet::readable(),
+                    PollOpt::edge()).unwrap();
+    
+    
+	
+   /* loop {
         // Large match Easier to optimize than more intuitive solutions
         match player.rx.recv().unwrap() {
             ReceiverData::Packet(mut pack)  => {
-                if player.health > 0 || pack.id == 0x16 {
+                if player.health > 0 || pack.id == 0x16 { // Only allow respawn packets if dead
                     match packet_handler(&mut player, &mut pack) {
                         Some(_) => (),//kick_player(e),
                         _ => (),
@@ -88,7 +122,7 @@ pub fn player_loop(mut player: Player) {
             ReceiverData::KeepAlive => { let _ = player.stream.write(&[0x2u8, 0x0u8, 0x0u8]); },
             ReceiverData::TcpErr => return,
         }
-    }
+    }*/
 }
 
 use struct_types::Location;
@@ -101,7 +135,7 @@ fn chat_message(player: &Player, packet: &mut Packet) -> Option<&'static str> {
 }
 fn use_entity(player: &mut Player, packet: &mut Packet) -> Option<&'static str> {
     let target_id = packet.get_varint();
-    let interact_type = packet.get::<u8>();
+    let interact_type = packet.getas::<u8>();
     if interact_type == 2 {
         let interact_location = packet.get_location();
         if player.location.distance(&interact_location) > 25.0 {
@@ -119,8 +153,8 @@ fn is_flying() -> Option<&'static str> {
 fn position_update(player: &mut Player, packet: &mut Packet) -> Option<&'static str> {
     //Fixe me
     let new_pos = packet.get_location();
-    let on_ground = packet.get::<bool>();
-    println!("NAME {} Loc {} {} {}", player.name, player.location.x, player.location.y, player.location.z);
+    let on_ground = packet.getas::<bool>();
+    
     if player.location.distance(&new_pos) > 100.0 {
         return Some("moving to fast");
     }
@@ -128,7 +162,7 @@ fn position_update(player: &mut Player, packet: &mut Packet) -> Option<&'static 
     let fall_dist = player.last_on_ground.y - new_pos.y - 3.0;
     if fall_dist > 0.0 && on_ground  {
         player.health -= fall_dist as i16;
-        player.update_health();
+        player.send_health();
         player.last_on_ground = new_pos.clone();
     }
     player.location = new_pos;

@@ -33,7 +33,7 @@
 use player::Player;
 
 impl Player {
-    pub fn update_health(&mut self) {
+    pub fn send_health(&mut self) {
         Send!{
             self.stream,
             0x6,
@@ -44,7 +44,7 @@ impl Player {
     }
     pub fn health(&mut self, addition: i16) {
         self.health += addition;
-        self.update_health();
+        self.send_health();
     }
     pub fn send_spawn(&mut self) {
         Send!{ self.stream,

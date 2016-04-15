@@ -10,7 +10,7 @@
 // 2. Redistributions in binary form must reproduce the above copyright
 // notice, this list of conditions and the following disclaimer in the
 // documentation and/or other materials provided with the distribution.
-// 3. The name of the author may not be used to endorse or promote products
+// 3. The name of the author may not be used to endose or promote products
 // derived from this software without specific prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
@@ -33,8 +33,7 @@
 // To conversion is in packet_sending
 
 use packet::Packet;
-use std::slice::from_raw_parts_mut;
-use std::mem::{ size_of, zeroed, transmute };
+use std::mem::{ size_of, transmute, zeroed};
 
 impl Packet {
     pub fn get_varint(&mut self) -> i64 {
@@ -42,39 +41,44 @@ impl Packet {
     }
     pub fn get_string(&mut self) -> String {
         let len = self.get_varint() as usize;
-        String::from_utf8(
-            self.data
+        self.data
             .by_ref()
             .take(len)
-            .collect::<Vec<u8>>()
-        ).unwrap()
+            .map(|c| c as char)
+            .collect::<String>()
     }
-    pub fn get<T>(&mut self) -> T {
-        unsafe {
-            let result:T = zeroed();
-            let r_slice = from_raw_parts_mut(transmute::<_,*mut u8>(&result), size_of::<T>());
-            for byte in r_slice.iter_mut().rev() {
-                *byte = self.data.next().unwrap();
-            }
-            result
+    
+    pub fn getas<T: Clone>(&mut self) -> T {
+        let mut result: [u8; 8] = [0;8];
+        for (i, byte) in result[..size_of::<T>()].iter_mut().rev().zip(self.data.by_ref()) { 
+            *i = byte;
         }
+        unsafe { (*transmute::<_,&T>(&result)).clone() }
     }
 }
 
 pub trait VarInt { fn get_varint(&mut self) -> i64; }
 
 use std::iter::Iterator;
+// This is recieved Big edian, while most computers are little edian, so we write to it
+// in reverse order The first bit of a byte (most significant) is 1 if there is additional
+// bytes after words.  The rest of the byte (7 least signifacant, or & 0x7Fu8)
+// are the actually number
 impl<T: Iterator<Item = u8>> VarInt for T {
     fn get_varint(&mut self) -> i64 {
         let mut result = 0;
-        let mut size: usize = 0;
-        for (i, byte) in self.enumerate() {
-            result |= ((byte & 0x7Fu8) as i64) >> (7 * i);
+        let mut offset = 0;
+        for byte in self.take(10) {
+            result |= ((byte & 0x7Fu8) as i64) << offset;
+            offset += 7;
             if byte & 0x80u8 == 0 {
-                size = i;
                 break;
             }
         }
-        result | result >> (57 - (7 * size))
+        let shift = 57 - offset; //
+        (result << shift) >> shift
+        // This voodoo slides slides the left most bit to the end, then back. Rust auto extends signs
+        // E.G. 0b1000 >> 3 yields 0b1111
     }
 }
+

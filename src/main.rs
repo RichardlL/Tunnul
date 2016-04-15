@@ -27,10 +27,10 @@
 // THIS IS NOT AN OFFICIAL MINECRAFT PRODUCT,
 // NEITHER APPROVED NOR ASSOCIATED WITH MOJANG.
 
-
 #![feature(ip_addr)]
 #![feature(slice_patterns)]
 #[macro_use]
+
 
 // Conversion to minecraft types and sending them
 mod packet_sending;

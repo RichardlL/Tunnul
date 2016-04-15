@@ -48,8 +48,6 @@ impl Packet {
     // Takes a tcp stream and pulls a packet from it
     // MAJOR FIX : no guarantee of full packet
     pub fn new(mut stream: &mut TcpStream) -> Result<Packet, &'static str> {
-        let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
-        
         let mut data = match stream
                 .bytes()
                 .map(|i| i.unwrap())
@@ -58,25 +56,29 @@ impl Packet {
             len @ 1...1024 => vec![0; len],
             _ => return Err("Packet Forming error: Packet wrong \
                              size or stream Terminated"),
+        }; 
+                
+        let pack =  { 
+            let mut temp = match stream.read_exact(&mut data) {
+                Ok(_) => Packet {
+                    id: 255,
+                    data: data.into_iter()
+                },
+                Err(_) => return Err("Error reading Packet"),
+            };
+            temp.id = temp.get_varint() as u8;
+            temp
         };
-         
-        let mut pack = match stream.read_exact(&mut data) {
-            Ok(_) => Packet {
-                id: unsafe { mem::uninitialized() },
-                data: data.into_iter()
-            },
-            Err(_) => return Err("Error reading Packet"),
-        };
-        pack.id = pack.get_varint() as u8;
+        
         Ok(pack)
     }
 }
 use std::sync::mpsc::Sender;
 use std::sync::mpsc::SendError;
 use player_loop::ReceiverData;
-
+/*
 pub fn form_packet(
-    mut stream: Box<TcpStream>,
+    mut stream: TcpStream,
     tx: Sender<ReceiverData>
 	) -> Result<(), SendError<ReceiverData>> {
     loop {
@@ -87,7 +89,7 @@ pub fn form_packet(
             Err(_) => return tx.send(ReceiverData::TcpErr),
         }
     }
-}
+}*/
 
 
 

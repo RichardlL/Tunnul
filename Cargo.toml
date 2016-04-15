@@ -6,3 +6,6 @@ authors = ["Richard Lettich <lettrich42@gmail.com>"]
 
 include = ["src/**/*", "Cargo.toml"]
 
+[dependencies]
+toml = "0.1.27"
+mio = "0.5.0"

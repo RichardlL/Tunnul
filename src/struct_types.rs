@@ -57,9 +57,9 @@ impl Packet {
     // Some use f32, most use f64
     pub fn get_location(&mut self) -> Location {
         Location { 
-            x: self.get::<f64>(),
-            y: self.get::<f64>(),
-            z: self.get::<f64>(),
+            x: self.getas::<f64>(),
+            y: self.getas::<f64>(),
+            z: self.getas::<f64>(),
         } 
     }
 }

@@ -9,7 +9,8 @@ use player_loop::ReceiverData;
 pub fn keep_alive_loop(rx: Receiver<Sender<ReceiverData>>) {
     let mut connections = Vec::new();
     loop {
-        if let Ok(keep_alive_tx) = rx.try_recv() {
+        println!("clients: {}", connections.len());
+        while let Ok(keep_alive_tx) = rx.try_recv() {
             connections.push(keep_alive_tx);
         }
         let mut i = connections.len();

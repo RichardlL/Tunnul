@@ -119,8 +119,8 @@ impl Player {
         let (to_player,  data_rx) = channel();
         
         let to_player_clone = to_player.clone();
-        let stream_clone = Box::new(stream.try_clone().unwrap());
-        thread::spawn(move || packet::form_packet(stream_clone, to_player_clone));
+        //let stream_clone = stream.try_clone().unwrap();
+        //thread::spawn(move || packet::form_packet(stream_clone, to_player_clone));
 
         Some(Player {
             eid: hash.finish() as u32,
@@ -143,3 +143,4 @@ impl Player {
         })
     }
 }
+

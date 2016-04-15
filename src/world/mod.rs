@@ -102,6 +102,7 @@ impl WorldChunk {
         }
     }
     fn send(&self, stream: &mut TcpStream) {
+        let mut map: [u8; 8192] = [0;8192];
         let mut position = 0;
         let mut single_block_pos = 0;
         loop {
@@ -109,15 +110,15 @@ impl WorldChunk {
                 .iter()
                 .rposition(|b_line| b_line.end > position && b_line.start <= position) {
                     Some(s) => s,
-                    None => match 0 {
-                        _ if self.single_block.len() > single_block_pos => {
-                            stream.write(&unsafe {transmute::<_,[u8;2]>(self.single_block[single_block_pos])});
+                    None => {
+                        if self.single_block.len() > single_block_pos {
+                            map[poself.single_block[single_block_pos])});
                             single_block_pos += 1;
-                            position += 1;
-                            continue;
+                                position += 1;
+                                continue;
                         },
-                        _ => break,
-                    }
+                        else { break },
+                    }.
             };
             let end = match self.block_lines[block+1..]
                 .iter()
@@ -126,22 +127,12 @@ impl WorldChunk {
                     Some(b_line) => b_line.start,
                     None => self.block_lines[block].end,
             };
-            for _ in position..end {
-                    self.block_lines[block].write(stream);
+            for u in map[position..end] {
+                    u = self.blocklines[block].id;
             }
             position = end;
         }
-        for _ in 0..(65536 - position) * 2 {
-            stream.write(&[0u8;2]);
-        }
     }
 }
-fn test_map(stream: &mut TcpStream) {
-    let chunk = WorldChunk::new_generic(0, 0);
-    Send! { stream: 0x0u8, 1u8, 0i32, 0i32, 255u8, chunk,
-}
 
-
- */
-
-
+*/
